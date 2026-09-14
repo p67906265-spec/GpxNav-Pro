@@ -1,0 +1,19 @@
+GPX NAV PRO — aggiornamento impostazioni per singola traccia
+
+Novità:
+- Menu spostato in basso a sinistra.
+- Tocco su INIZIO: azzera il contachilometri.
+- Pressione lunga su INIZIO: ripristina i chilometri reali.
+- Il messaggio di azzeramento ora compare come Toast temporaneo.
+- In Percorsi, ogni GPX ha il pulsante Impostazioni.
+- Ogni traccia salva separatamente:
+  * colore della linea;
+  * spessore della linea (3-16);
+  * frecce di direzione attive/disattive;
+  * distanza tra le frecce (100-1000 m).
+- La mappa si aggiorna subito dopo il salvataggio.
+- Freccia blu GPS mantenuta sulla mappa.
+- Icona dell'app sostituita con la moto Scorta Tecnica senza la scritta inferiore.
+
+Nota compilazione:
+Il progetto deve essere sincronizzato e compilato da Android Studio con accesso alle dipendenze Gradle già configurate.

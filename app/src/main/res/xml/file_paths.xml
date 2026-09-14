@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <external-files-path
+        name="external_gpx"
+        path="gpx/" />
+    <files-path
+        name="internal_gpx"
+        path="gpx/" />
+    <external-files-path
+        name="external_maps"
+        path="maps/" />
+    <files-path
+        name="internal_maps"
+        path="maps/" />
+</paths>
