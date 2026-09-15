@@ -1,0 +1,20 @@
+FIRMA PERMANENTE - GPXNav Pro
+================================
+
+Il file .jks NON deve essere caricato nel repository GitHub.
+Conservarlo insieme al file di credenziali in un posto sicuro.
+
+I quattro GitHub Secrets richiesti sono:
+
+1. SIGNING_KEY
+2. KEY_ALIAS
+3. KEY_STORE_PASSWORD
+4. KEY_PASSWORD
+
+Percorso su GitHub:
+Repository > Settings > Secrets and variables > Actions > New repository secret
+
+Il workflow .github/workflows/build-apk.yml genera automaticamente
+l'APK release firmato quando viene eseguito manualmente o dopo un push su main.
+
+IMPORTANTE: tutti gli aggiornamenti futuri devono usare questa stessa firma.

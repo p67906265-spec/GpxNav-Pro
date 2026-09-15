@@ -1,0 +1,49 @@
+name: Compila APK release firmato
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Scarica il progetto
+        uses: actions/checkout@v4
+
+      - name: Configura Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Prepara la firma permanente
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+        run: |
+          printf '%s' "$SIGNING_KEY" | base64 --decode > "$RUNNER_TEMP/gpxnavpro-release.jks"
+
+      - name: Compila APK release firmato
+        env:
+          SIGNING_STORE_FILE: ${{ runner.temp }}/gpxnavpro-release.jks
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew clean assembleRelease
+
+      - name: Rinomina APK
+        run: cp app/build/outputs/apk/release/app-release.apk GpxNav-Pro-v1.1-release-firmato.apk
+
+      - name: Pubblica APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: GpxNav-Pro-v1.1-release-firmato
+          path: GpxNav-Pro-v1.1-release-firmato.apk
+          if-no-files-found: error
+          retention-days: 30
