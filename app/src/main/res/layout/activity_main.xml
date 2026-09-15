@@ -530,7 +530,7 @@
             android:gravity="center_vertical"
             android:paddingStart="12dp"
             android:paddingEnd="12dp"
-            android:text="Mappa offline"
+            android:text="Mappe online/offline"
             android:textColor="#FFFFFF"
             android:textSize="16sp" />
 

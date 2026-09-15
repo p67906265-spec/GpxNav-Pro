@@ -38,12 +38,12 @@ jobs:
           ./gradlew clean assembleRelease
 
       - name: Rinomina APK
-        run: cp app/build/outputs/apk/release/app-release.apk GpxNav-Pro-v1.1-release-firmato.apk
+        run: cp app/build/outputs/apk/release/app-release.apk GpxNav-Pro-v1.2-mappa-online-release-firmato.apk
 
       - name: Pubblica APK
         uses: actions/upload-artifact@v4
         with:
-          name: GpxNav-Pro-v1.1-release-firmato
-          path: GpxNav-Pro-v1.1-release-firmato.apk
+          name: GpxNav-Pro-v1.2-mappa-online-release-firmato
+          path: GpxNav-Pro-v1.2-mappa-online-release-firmato.apk
           if-no-files-found: error
           retention-days: 30

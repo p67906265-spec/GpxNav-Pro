@@ -328,9 +328,14 @@ class MainActivity : AppCompatActivity(), LocationListener {
         binding.mapView.onCreate(savedInstanceState)
 
         binding.mapView.addOnDidFailLoadingMapListener { error ->
+            val offlineAvailable = installedMapFile().exists()
             showStatus(
-                message = "Errore caricamento mappa:\n$error",
-                showButton = true
+                message = if (offlineAvailable) {
+                    "Mappa online non disponibile.\nControlla Internet oppure seleziona la mappa offline dal menu.\n\n$error"
+                } else {
+                    "Mappa online non disponibile.\nControlla la connessione Internet.\nPuoi anche importare una mappa PMTiles.\n\n$error"
+                },
+                showButton = !offlineAvailable
             )
         }
 
@@ -368,29 +373,52 @@ class MainActivity : AppCompatActivity(), LocationListener {
     }
 
     // =========================================================
-    // CARICAMENTO MAPPA PMTILES VETTORIALE
+    // CARICAMENTO MAPPA ONLINE / PMTILES OFFLINE
     // =========================================================
 
     private fun loadInstalledMap() {
-        val map = mapLibreMap ?: return
-        val mapFile = installedMapFile()
+        val selectedMode = getSharedPreferences(PREFS_MAP, Context.MODE_PRIVATE)
+            .getString(PREF_MAP_MODE, MAP_MODE_ONLINE)
+        val offlineMap = installedMapFile()
 
-        if (!mapFile.exists() || mapFile.length() == 0L) {
-            map.setStyle(Style.Builder().fromJson(emptyStyleJson())) { style ->
-                centerOnFriuli(map)
-                loadInstalledGpx(style)
-                installGpsMarker(style)
-                requestLocationPermissionIfNeeded()
-                binding.statusPanel.visibility = View.GONE
-                binding.importMapButton.visibility = View.GONE
-                Toast.makeText(
-                    this,
-                    "Mappa offline non installata: puoi aggiungerla in seguito dal menu",
-                    Toast.LENGTH_LONG
-                ).show()
+        if (selectedMode == MAP_MODE_OFFLINE && offlineMap.exists() && offlineMap.length() > 0L) {
+            loadOfflineMap(offlineMap)
+        } else {
+            if (selectedMode == MAP_MODE_OFFLINE) {
+                saveMapMode(MAP_MODE_ONLINE)
             }
-            return
+            loadOnlineMap()
         }
+    }
+
+    private fun loadOnlineMap() {
+        val map = mapLibreMap ?: return
+
+        showStatus(
+            message = "Caricamento mappa online…",
+            showButton = false
+        )
+
+        map.setStyle(Style.Builder().fromUri(ONLINE_STYLE_URL)) { style ->
+            centerOnFriuli(map)
+            loadInstalledGpx(style)
+            installGpsMarker(style)
+            requestLocationPermissionIfNeeded()
+
+            showStatus(
+                message = "Mappa online caricata\nDati © OpenStreetMap",
+                showButton = false
+            )
+            binding.statusPanel.postDelayed({
+                if (!isFinishing && !isDestroyed) {
+                    binding.statusPanel.visibility = View.GONE
+                }
+            }, 1200L)
+        }
+    }
+
+    private fun loadOfflineMap(mapFile: File) {
+        val map = mapLibreMap ?: return
 
         showStatus(
             message = "Apertura mappa offline…",
@@ -1567,38 +1595,75 @@ class MainActivity : AppCompatActivity(), LocationListener {
 
     private fun showOfflineMapActions() {
         val mapFile = installedMapFile()
-        val sizeText = if (mapFile.exists()) {
+        val selectedMode = getSharedPreferences(PREFS_MAP, Context.MODE_PRIVATE)
+            .getString(PREF_MAP_MODE, MAP_MODE_ONLINE)
+        val modeText = if (selectedMode == MAP_MODE_OFFLINE && mapFile.exists()) {
+            "Mappa offline"
+        } else {
+            "Mappa online"
+        }
+        val offlineText = if (mapFile.exists()) {
             String.format(
                 java.util.Locale.ITALY,
-                "%.1f MB",
+                "%.1f MB installati",
                 mapFile.length() / (1024.0 * 1024.0)
             )
         } else {
-            "Nessuna mappa installata"
+            "non installata"
         }
         val actions = if (mapFile.exists()) {
-            arrayOf("Importa o sostituisci", "Salva una copia", "Condividi")
+            arrayOf(
+                "Usa mappa online",
+                "Usa mappa offline",
+                "Importa o sostituisci",
+                "Salva una copia",
+                "Condividi"
+            )
         } else {
-            arrayOf("Importa mappa")
+            arrayOf("Usa mappa online", "Importa mappa offline")
         }
         val dialog = AlertDialog.Builder(this)
-            .setTitle("Mappa offline")
-            .setMessage(sizeText)
+            .setTitle("Mappe")
+            .setMessage("Modalità attuale: $modeText\nMappa offline: $offlineText")
             .setItems(actions) { _, which ->
-                when {
-                    !mapFile.exists() || which == 0 ->
-                        mapPicker.launch(arrayOf("application/octet-stream", "*/*"))
-                    which == 1 -> {
-                        pendingMapExportFile = mapFile
-                        exportMapLauncher.launch(mapFile.name)
+                if (mapFile.exists()) {
+                    when (which) {
+                        0 -> {
+                            saveMapMode(MAP_MODE_ONLINE)
+                            loadInstalledMap()
+                        }
+                        1 -> {
+                            saveMapMode(MAP_MODE_OFFLINE)
+                            loadInstalledMap()
+                        }
+                        2 -> mapPicker.launch(arrayOf("application/octet-stream", "*/*"))
+                        3 -> {
+                            pendingMapExportFile = mapFile
+                            exportMapLauncher.launch(mapFile.name)
+                        }
+                        4 -> shareOfflineMap(mapFile)
                     }
-                    which == 2 -> shareOfflineMap(mapFile)
+                } else {
+                    when (which) {
+                        0 -> {
+                            saveMapMode(MAP_MODE_ONLINE)
+                            loadInstalledMap()
+                        }
+                        1 -> mapPicker.launch(arrayOf("application/octet-stream", "*/*"))
+                    }
                 }
             }
             .setNegativeButton("Chiudi", null)
             .create()
         dialog.setOnShowListener { styleBlueDialog(dialog) }
         dialog.show()
+    }
+
+    private fun saveMapMode(mode: String) {
+        getSharedPreferences(PREFS_MAP, Context.MODE_PRIVATE)
+            .edit()
+            .putString(PREF_MAP_MODE, mode)
+            .apply()
     }
 
     private fun shareOfflineMap(file: File) {
@@ -3331,6 +3396,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
 
             runOnUiThread {
                 result.onSuccess {
+                    saveMapMode(MAP_MODE_OFFLINE)
                     showStatus(
                         message = "Mappa importata correttamente",
                         showButton = false
@@ -3657,6 +3723,11 @@ class MainActivity : AppCompatActivity(), LocationListener {
 
     companion object {
         private const val MAP_SOURCE_ID = "offline-map-source"
+        private const val ONLINE_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
+        private const val PREFS_MAP = "map_settings"
+        private const val PREF_MAP_MODE = "map_mode"
+        private const val MAP_MODE_ONLINE = "online"
+        private const val MAP_MODE_OFFLINE = "offline"
         private const val GPS_SOURCE_ID = "gps-position-source"
         private const val GPS_LAYER_ID = "gps-position-layer"
         private const val GPS_IMAGE_ID = "gps-navigation-arrow"
