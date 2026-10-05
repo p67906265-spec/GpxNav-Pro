@@ -1,0 +1,19 @@
+GPX NAV PRO - aggiornamento 1.3
+
+Modifiche:
+- nuova opzione "Pendenza" in Colore traccia;
+- scegliendo un colore normale la traccia resta uniforme;
+- scegliendo "Pendenza" la traccia viene colorata in base alla pendenza;
+- la scelta viene salvata separatamente per ogni GPX;
+- mantenute le soglie già presenti nel progetto:
+  salita: +1 / +4 / +7 / +10% e oltre;
+  discesa: -1 / -4 / -7 / -10% e oltre;
+- apertura diretta dei file .gpx da Android (Apri con GpxNav Pro);
+- versione portata a 1.3 / versionCode 4.
+
+Uso da Termux:
+1. estrarre lo ZIP;
+2. eseguire:
+   bash apply_gpxnav_update.sh
+
+Lo script recupera/aggiorna il repository, applica le modifiche, fa commit e push su main.
