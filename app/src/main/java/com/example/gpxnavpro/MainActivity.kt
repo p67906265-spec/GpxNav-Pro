@@ -370,6 +370,28 @@ class MainActivity : AppCompatActivity(), LocationListener {
             loadInstalledMap()
             updateScaleBar()
         }
+
+        handleIncomingGpxIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIncomingGpxIntent(intent)
+    }
+
+    /**
+     * Riceve un file GPX aperto dal File Manager, Drive,
+     * Telegram, WhatsApp o altre applicazioni Android.
+     *
+     * importGpx() copia subito il file nello spazio privato
+     * di GpxNav Pro e lo imposta come percorso attivo.
+     */
+    private fun handleIncomingGpxIntent(incomingIntent: Intent?) {
+        if (incomingIntent?.action != Intent.ACTION_VIEW) return
+
+        val uri = incomingIntent.data ?: return
+        importGpx(uri)
     }
 
     // =========================================================
