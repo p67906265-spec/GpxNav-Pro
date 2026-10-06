@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.11
+- Aggiunta voce "Guida comandi" nel menu laterale con spiegazione dei pulsanti di modifica.
+- Aggiunta "Simula giro" alle azioni di ogni traccia GPX.
+- Pallino arancione dedicato alla simulazione, separato dal GPS reale.
+- Comandi simulazione: Pausa/Riprendi, 1×, 2×, 5×, 10× e Stop.
+- Durante la simulazione vengono aggiornati km percorsi, km alla fine e pannello avvisi.
+- Gli avvisi TV e Pericolo possono produrre vibrazione/bip anche durante la simulazione.
+- La simulazione viene fermata automaticamente prima di avviare la navigazione reale o cambiare traccia.
+
 ## 1.10
 - Aggiunta funzione "Unisci con un'altra traccia" dentro Modifica traccia.
 - La seconda traccia viene invertita automaticamente se il suo punto finale è più vicino alla fine della prima.

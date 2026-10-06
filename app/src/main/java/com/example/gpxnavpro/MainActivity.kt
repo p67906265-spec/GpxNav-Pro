@@ -14,6 +14,8 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.AbsoluteSizeSpan
@@ -87,6 +89,15 @@ class MainActivity : AppCompatActivity(), LocationListener {
     private var routesDialog: AlertDialog? = null
     private var currentRouteProgressMeters = 0.0
     private var tripResetOffsetMeters = 0.0
+
+    private val simulationHandler = Handler(Looper.getMainLooper())
+    private var isSimulationActive = false
+    private var isSimulationPaused = false
+    private var simulationSpeedMultiplier = 1.0
+    private var simulationProgressMeters = 0.0
+    private var simulationLastTickMs = 0L
+    private var simulationCumulativeMeters = DoubleArray(0)
+    private val simulationAlertFeedback by lazy { AlertFeedback(this) }
     private val navigationEngine = NavigationEngine()
     private val routeAlertEngine = RouteAlertEngine()
     private val approachNavigationEngine = NavigationEngine()
@@ -258,6 +269,10 @@ class MainActivity : AppCompatActivity(), LocationListener {
             closeDrawer()
             showOfflineMapActions()
         }
+        binding.guideDrawerButton.setOnClickListener {
+            closeDrawer()
+            showCommandGuide()
+        }
         binding.appearanceDrawerButton.setOnClickListener {
             val file = activeRouteFile
             closeDrawer()
@@ -320,6 +335,16 @@ class MainActivity : AppCompatActivity(), LocationListener {
         binding.createUndoButton.setOnClickListener { undoCreateGpxPoint() }
         binding.createSaveButton.setOnClickListener { showSaveCreatedGpxDialog() }
         binding.createCloseButton.setOnClickListener { finishCreateGpxMode() }
+        binding.simulationPauseButton.setOnClickListener {
+            toggleSimulationPause()
+        }
+        binding.simulationSpeed1Button.setOnClickListener { setSimulationSpeed(1.0) }
+        binding.simulationSpeed2Button.setOnClickListener { setSimulationSpeed(2.0) }
+        binding.simulationSpeed5Button.setOnClickListener { setSimulationSpeed(5.0) }
+        binding.simulationSpeed10Button.setOnClickListener { setSimulationSpeed(10.0) }
+        binding.simulationStopButton.setOnClickListener {
+            stopSimulation()
+        }
         binding.startPanel.setOnClickListener {
             tripResetOffsetMeters = currentRouteProgressMeters
             updateDistancePanels()
@@ -693,6 +718,9 @@ class MainActivity : AppCompatActivity(), LocationListener {
     }
 
     private fun startNavigation() {
+        if (isSimulationActive) {
+            stopSimulation(silent = true)
+        }
         val route = activeRoute ?: return
         val location = lastLocation
         if (location == null) {
@@ -860,7 +888,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
     }
 
     private fun updateRouteAlertPanel() {
-        if (!isNavigationActive || isApproachingStart) {
+        if ((!isNavigationActive && !isSimulationActive) || isApproachingStart) {
             binding.eventAlertPanel.visibility = View.GONE
             return
         }
@@ -873,6 +901,10 @@ class MainActivity : AppCompatActivity(), LocationListener {
         if (activeAlert == null) {
             binding.eventAlertPanel.visibility = View.GONE
             return
+        }
+
+        if (isSimulationActive) {
+            simulationAlertFeedback.routeAlert(activeAlert)
         }
 
         val type = activeAlert.alert.type
@@ -929,6 +961,12 @@ class MainActivity : AppCompatActivity(), LocationListener {
         }
 
     private fun prepareNavigationForRoute() {
+        if (isSimulationActive) {
+            stopSimulation(silent = true)
+        }
+        currentRouteProgressMeters = 0.0
+        tripResetOffsetMeters = 0.0
+        updateDistancePanels()
         isNavigationActive = false
         isApproachingStart = false
         activeApproachRoute = null
@@ -1816,13 +1854,16 @@ class MainActivity : AppCompatActivity(), LocationListener {
     private fun showDrawerRouteActions(file: File) {
         val dialog = AlertDialog.Builder(this)
             .setTitle(file.nameWithoutExtension)
-            .setItems(arrayOf("Apri traccia", "Info traccia", "Modifica traccia", "Elimina traccia")) { _, which ->
+            .setItems(
+                arrayOf("Apri traccia", "Info traccia", "Simula giro", "Modifica traccia", "Elimina traccia")
+            ) { _, which ->
                 closeDrawer()
                 when (which) {
                     0 -> openGpxFile(file, zoomToRoute = true)
                     1 -> showRouteInfo(file)
-                    2 -> openGpxFile(file, zoomToRoute = true) { showGpxEditorStart() }
-                    3 -> confirmDeleteDrawerRoute(file)
+                    2 -> openGpxFile(file, zoomToRoute = true) { startSimulation() }
+                    3 -> openGpxFile(file, zoomToRoute = true) { showGpxEditorStart() }
+                    4 -> confirmDeleteDrawerRoute(file)
                 }
             }
             .setNegativeButton("Annulla", null)
@@ -1851,11 +1892,12 @@ class MainActivity : AppCompatActivity(), LocationListener {
 
         val dialog = AlertDialog.Builder(this)
             .setTitle(file.nameWithoutExtension)
-            .setItems(arrayOf("Info traccia", "Modifica traccia", "Elimina traccia")) { _, which ->
+            .setItems(arrayOf("Info traccia", "Simula giro", "Modifica traccia", "Elimina traccia")) { _, which ->
                 when (which) {
                     0 -> showRouteInfo(file)
-                    1 -> showGpxEditorStart()
-                    2 -> confirmDeleteDrawerRoute(file)
+                    1 -> startSimulation()
+                    2 -> showGpxEditorStart()
+                    3 -> confirmDeleteDrawerRoute(file)
                 }
             }
             .setNegativeButton("Annulla", null)
@@ -2464,6 +2506,11 @@ class MainActivity : AppCompatActivity(), LocationListener {
         )
         drawRouteAlertMarkers(style, route)
         drawKilometerMarkers(style, route)
+
+        if (isSimulationActive) {
+            installSimulationMarker()
+            updateSimulationMarker(simulationProgressMeters)
+        }
 
         // Il simbolo GPS deve restare sopra la traccia.
         style.getLayer(GPS_LAYER_ID)?.let { style.removeLayer(GPS_LAYER_ID) }
@@ -3728,7 +3775,8 @@ class MainActivity : AppCompatActivity(), LocationListener {
             GPX_ALERTS_LAYER_ID,
             GPX_ALERT_CONNECTORS_LAYER_ID,
             GPX_ALERT_CONNECTORS_OUTLINE_LAYER_ID,
-            GPX_EDIT_SELECTION_LAYER_ID
+            GPX_EDIT_SELECTION_LAYER_ID,
+            SIMULATION_LAYER_ID
         ).forEach { id ->
             if (style.getLayer(id) != null) style.removeLayer(id)
         }
@@ -3740,7 +3788,8 @@ class MainActivity : AppCompatActivity(), LocationListener {
             GPX_FINISH_SOURCE_ID,
             GPX_ALERTS_SOURCE_ID,
             GPX_ALERT_CONNECTORS_SOURCE_ID,
-            GPX_EDIT_SELECTION_SOURCE_ID
+            GPX_EDIT_SELECTION_SOURCE_ID,
+            SIMULATION_SOURCE_ID
         ).forEach { id ->
             if (style.getSource(id) != null) style.removeSource(id)
         }
@@ -4092,6 +4141,295 @@ class MainActivity : AppCompatActivity(), LocationListener {
         binding.statusPanel.visibility = View.VISIBLE
     }
 
+    private fun showCommandGuide() {
+        val scroll = ScrollView(this)
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(
+                (24 * resources.displayMetrics.density).toInt(),
+                (8 * resources.displayMetrics.density).toInt(),
+                (24 * resources.displayMetrics.density).toInt(),
+                (12 * resources.displayMetrics.density).toInt()
+            )
+        }
+        scroll.addView(container)
+
+        fun addGuideItem(title: String, description: String) {
+            container.addView(TextView(this).apply {
+                text = title
+                textSize = 17f
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+                setTextColor(android.graphics.Color.WHITE)
+                setPadding(0, 14, 0, 4)
+            })
+            container.addView(TextView(this).apply {
+                text = description
+                textSize = 14f
+                setTextColor(android.graphics.Color.LTGRAY)
+                setPadding(0, 0, 0, 8)
+            })
+        }
+
+        addGuideItem("＋  Aggiungi tratto", "Sostituisce una parte della traccia facendo passare il nuovo tratto da un punto scelto sulla mappa.")
+        addGuideItem("✂  Taglia traccia", "Scegli un punto e conserva la parte precedente oppure quella successiva.")
+        addGuideItem("↕  Inverti traccia", "Scambia il senso di percorrenza: partenza e arrivo vengono invertiti.")
+        addGuideItem("✥  Sposta punto", "Seleziona un punto GPX e spostalo in una nuova posizione.")
+        addGuideItem("↪  Unisci tracce", "Usa la traccia aperta come prima e scegli una seconda traccia. Il verso della seconda viene adattato automaticamente.")
+        addGuideItem("↻  Ripeti giri", "Duplica una traccia circuito per il numero di giri scelto, da 2 a 30.")
+        addGuideItem("▣  Centra traccia", "Adatta la mappa per mostrare tutta la traccia.")
+        addGuideItem("✓  Fine modifica", "Chiude gli strumenti di modifica e torna alla mappa normale.")
+        addGuideItem("Simula giro", "Fa avanzare un pallino arancione lungo il GPX. Puoi mettere in pausa, cambiare velocità e controllare km e avvisi.")
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Guida comandi GPX NAV")
+            .setView(scroll)
+            .setPositiveButton("Chiudi", null)
+            .create()
+        dialog.setOnShowListener { styleBlueDialog(dialog) }
+        dialog.show()
+    }
+
+    private fun startSimulation() {
+        val route = activeRoute ?: run {
+            Toast.makeText(this, "Apri prima un percorso GPX", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (route.points.size < 2) {
+            Toast.makeText(this, "Traccia troppo corta per la simulazione", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (isNavigationActive) {
+            Toast.makeText(
+                this,
+                "Ferma la navigazione prima di avviare la simulazione",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+
+        finishGpxEditMode()
+        finishCreateGpxMode()
+        setFollowGps(false)
+
+        simulationCumulativeMeters = DoubleArray(route.points.size)
+        for (index in 1 until route.points.size) {
+            simulationCumulativeMeters[index] =
+                simulationCumulativeMeters[index - 1] +
+                    GeoMath.haversineMeters(route.points[index - 1], route.points[index])
+        }
+
+        simulationProgressMeters = 0.0
+        simulationSpeedMultiplier = 1.0
+        simulationLastTickMs = android.os.SystemClock.elapsedRealtime()
+        isSimulationPaused = false
+        isSimulationActive = true
+        tripResetOffsetMeters = 0.0
+        currentRouteProgressMeters = 0.0
+        simulationAlertFeedback.reset()
+
+        installSimulationMarker()
+        updateSimulationMarker(0.0)
+        updateDistancePanels()
+        updateRouteAlertPanel()
+        updateSimulationPanel()
+        binding.simulationPanel.visibility = View.VISIBLE
+
+        simulationHandler.removeCallbacks(simulationRunnable)
+        simulationHandler.post(simulationRunnable)
+    }
+
+    private val simulationRunnable = object : Runnable {
+        override fun run() {
+            if (!isSimulationActive) return
+
+            val now = android.os.SystemClock.elapsedRealtime()
+            val elapsedSeconds = ((now - simulationLastTickMs).coerceAtMost(1500L)) / 1000.0
+            simulationLastTickMs = now
+
+            if (!isSimulationPaused) {
+                val route = activeRoute
+                if (route == null) {
+                    stopSimulation(silent = true)
+                    return
+                }
+
+                simulationProgressMeters +=
+                    SIMULATION_BASE_SPEED_METERS_PER_SECOND *
+                        simulationSpeedMultiplier *
+                        elapsedSeconds
+
+                if (simulationProgressMeters >= route.distanceMeters) {
+                    simulationProgressMeters = route.distanceMeters
+                }
+
+                currentRouteProgressMeters = simulationProgressMeters
+                updateSimulationMarker(simulationProgressMeters)
+                updateDistancePanels()
+                updateRouteAlertPanel()
+                updateSimulationPanel()
+
+                if (simulationProgressMeters >= route.distanceMeters) {
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Simulazione completata",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    stopSimulation(silent = true, keepFinalMarker = true)
+                    return
+                }
+            }
+
+            simulationHandler.postDelayed(this, SIMULATION_TICK_MS)
+        }
+    }
+
+    private fun toggleSimulationPause() {
+        if (!isSimulationActive) return
+        isSimulationPaused = !isSimulationPaused
+        simulationLastTickMs = android.os.SystemClock.elapsedRealtime()
+        updateSimulationPanel()
+    }
+
+    private fun setSimulationSpeed(multiplier: Double) {
+        if (!isSimulationActive) return
+        simulationSpeedMultiplier = multiplier
+        simulationLastTickMs = android.os.SystemClock.elapsedRealtime()
+        updateSimulationPanel()
+    }
+
+    private fun updateSimulationPanel() {
+        if (!isSimulationActive) return
+        val route = activeRoute ?: return
+        val progressKm = simulationProgressMeters / 1000.0
+        val totalKm = route.distanceMeters / 1000.0
+
+        binding.simulationStatusText.text = String.format(
+            java.util.Locale.ITALY,
+            "SIMULAZIONE  %.1f×   %.1f / %.1f km",
+            simulationSpeedMultiplier,
+            progressKm,
+            totalKm
+        )
+        binding.simulationPauseButton.text = if (isSimulationPaused) "Riprendi" else "Pausa"
+
+        val selected = android.graphics.Color.parseColor("#FFD21F")
+        val normal = android.graphics.Color.parseColor("#1261A0")
+        val darkText = android.graphics.Color.rgb(23, 32, 42)
+        val lightText = android.graphics.Color.WHITE
+
+        fun styleSpeedButton(button: Button, speed: Double) {
+            val active = simulationSpeedMultiplier == speed
+            button.setBackgroundColor(if (active) selected else normal)
+            button.setTextColor(if (active) darkText else lightText)
+        }
+
+        styleSpeedButton(binding.simulationSpeed1Button, 1.0)
+        styleSpeedButton(binding.simulationSpeed2Button, 2.0)
+        styleSpeedButton(binding.simulationSpeed5Button, 5.0)
+        styleSpeedButton(binding.simulationSpeed10Button, 10.0)
+    }
+
+    private fun installSimulationMarker() {
+        val style = mapLibreMap?.style ?: return
+
+        if (style.getSource(SIMULATION_SOURCE_ID) == null) {
+            val route = activeRoute ?: return
+            val first = route.points.first()
+            style.addSource(
+                GeoJsonSource(
+                    SIMULATION_SOURCE_ID,
+                    Feature.fromGeometry(Point.fromLngLat(first.longitude, first.latitude))
+                )
+            )
+        }
+
+        if (style.getLayer(SIMULATION_LAYER_ID) == null) {
+            style.addLayer(
+                CircleLayer(SIMULATION_LAYER_ID, SIMULATION_SOURCE_ID).withProperties(
+                    circleRadius(9f),
+                    circleColor("#FF8C00"),
+                    circleStrokeColor("#FFFFFF"),
+                    circleStrokeWidth(3f)
+                )
+            )
+        }
+    }
+
+    private fun updateSimulationMarker(progressMeters: Double) {
+        val point = simulationPointAt(progressMeters) ?: return
+        val source = mapLibreMap?.style
+            ?.getSourceAs<GeoJsonSource>(SIMULATION_SOURCE_ID) ?: return
+        source.setGeoJson(
+            Feature.fromGeometry(Point.fromLngLat(point.longitude, point.latitude))
+        )
+    }
+
+    private fun simulationPointAt(progressMeters: Double): GpxPoint? {
+        val route = activeRoute ?: return null
+        if (route.points.isEmpty()) return null
+        if (route.points.size == 1) return route.points.first()
+        if (simulationCumulativeMeters.size != route.points.size) return route.points.first()
+
+        val target = progressMeters.coerceIn(0.0, route.distanceMeters)
+        var low = 0
+        var high = simulationCumulativeMeters.lastIndex
+        while (low < high) {
+            val mid = (low + high + 1) ushr 1
+            if (simulationCumulativeMeters[mid] <= target) low = mid else high = mid - 1
+        }
+
+        val index = low.coerceIn(0, route.points.lastIndex - 1)
+        val start = route.points[index]
+        val end = route.points[index + 1]
+        val segmentStart = simulationCumulativeMeters[index]
+        val segmentEnd = simulationCumulativeMeters[index + 1]
+        val segmentLength = (segmentEnd - segmentStart).coerceAtLeast(0.001)
+        val fraction = ((target - segmentStart) / segmentLength).coerceIn(0.0, 1.0)
+
+        return GpxPoint(
+            latitude = start.latitude + (end.latitude - start.latitude) * fraction,
+            longitude = start.longitude + (end.longitude - start.longitude) * fraction,
+            elevation = if (start.elevation != null && end.elevation != null) {
+                start.elevation + (end.elevation - start.elevation) * fraction
+            } else {
+                start.elevation ?: end.elevation
+            }
+        )
+    }
+
+    private fun stopSimulation(
+        silent: Boolean = false,
+        keepFinalMarker: Boolean = false
+    ) {
+        if (!isSimulationActive && !keepFinalMarker) return
+
+        isSimulationActive = false
+        isSimulationPaused = false
+        simulationHandler.removeCallbacks(simulationRunnable)
+        binding.simulationPanel.visibility = View.GONE
+        binding.eventAlertPanel.visibility = View.GONE
+
+        if (!keepFinalMarker) {
+            mapLibreMap?.style?.let { style ->
+                if (style.getLayer(SIMULATION_LAYER_ID) != null) {
+                    style.removeLayer(SIMULATION_LAYER_ID)
+                }
+                if (style.getSource(SIMULATION_SOURCE_ID) != null) {
+                    style.removeSource(SIMULATION_SOURCE_ID)
+                }
+            }
+            currentRouteProgressMeters = 0.0
+            tripResetOffsetMeters = 0.0
+            updateDistancePanels()
+        }
+
+        simulationAlertFeedback.reset()
+
+        if (!silent) {
+            Toast.makeText(this, "Simulazione terminata", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     // =========================================================
     // CICLO DI VITA MAPVIEW
     // =========================================================
@@ -4144,6 +4482,8 @@ class MainActivity : AppCompatActivity(), LocationListener {
             bRouterClient.close()
         }
         fileExecutor.shutdownNow()
+        simulationHandler.removeCallbacksAndMessages(null)
+        runCatching { simulationAlertFeedback.release() }
         binding.mapView.onDestroy()
         mapLibreMap = null
         super.onDestroy()
@@ -4176,6 +4516,10 @@ class MainActivity : AppCompatActivity(), LocationListener {
         private const val EDIT_ACTION_MOVE_TARGET = "move_target"
         private const val MERGE_CONNECTION_WARNING_METERS = 250.0
         private const val REPEAT_CLOSURE_WARNING_METERS = 100.0
+        private const val SIMULATION_SOURCE_ID = "gpx-simulation-source"
+        private const val SIMULATION_LAYER_ID = "gpx-simulation-layer"
+        private const val SIMULATION_TICK_MS = 250L
+        private const val SIMULATION_BASE_SPEED_METERS_PER_SECOND = 16.6667
         private const val GPX_ROUTE_SOURCE_ID = "gpx-route-source"
         private const val GPX_ROUTE_LAYER_ID = "gpx-route-layer"
         private const val GPX_EDIT_SELECTION_SOURCE_ID = "gpx-edit-selection-source"

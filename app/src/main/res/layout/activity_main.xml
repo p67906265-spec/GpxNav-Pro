@@ -535,6 +535,21 @@
             android:textSize="16sp" />
 
         <TextView
+            android:id="@+id/guideDrawerButton"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:background="?attr/selectableItemBackground"
+            android:drawableStart="@drawable/ic_help"
+            android:drawableEnd="@drawable/ic_chevron_right"
+            android:drawablePadding="16dp"
+            android:gravity="center_vertical"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:text="Guida comandi"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp" />
+
+        <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="18dp"
@@ -562,7 +577,7 @@
             android:layout_marginTop="8dp"
             android:layout_marginBottom="6dp"
             android:gravity="center"
-            android:text="Paolo Free 1.0  •  v1.10"
+            android:text="Paolo Free 1.0  •  v1.11"
             android:textColor="#9FCBFF"
             android:textSize="12sp" />
 
@@ -788,6 +803,108 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/simulationPanel"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="18dp"
+        android:layout_marginEnd="18dp"
+        android:layout_marginBottom="158dp"
+        android:visibility="gone"
+        app:cardBackgroundColor="#E6003A78"
+        app:cardCornerRadius="18dp"
+        app:strokeColor="#4CA3FF"
+        app:strokeWidth="1dp"
+        app:layout_constraintBottom_toBottomOf="@id/mapView"
+        app:layout_constraintStart_toStartOf="@id/mapView"
+        app:layout_constraintEnd_toEndOf="@id/mapView">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="10dp">
+
+            <TextView
+                android:id="@+id/simulationStatusText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="SIMULAZIONE  1×"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:paddingBottom="6dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/simulationPauseButton"
+                    android:layout_width="0dp"
+                    android:layout_height="42dp"
+                    android:layout_weight="1.35"
+                    android:minWidth="0dp"
+                    android:text="Pausa"
+                    android:textSize="11sp"
+                    app:backgroundTint="#1261A0" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/simulationSpeed1Button"
+                    android:layout_width="0dp"
+                    android:layout_height="42dp"
+                    android:layout_weight="0.8"
+                    android:minWidth="0dp"
+                    android:text="1×"
+                    android:textSize="11sp"
+                    app:backgroundTint="#FFD21F"
+                    android:textColor="#17202A" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/simulationSpeed2Button"
+                    android:layout_width="0dp"
+                    android:layout_height="42dp"
+                    android:layout_weight="0.8"
+                    android:minWidth="0dp"
+                    android:text="2×"
+                    android:textSize="11sp"
+                    app:backgroundTint="#1261A0" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/simulationSpeed5Button"
+                    android:layout_width="0dp"
+                    android:layout_height="42dp"
+                    android:layout_weight="0.8"
+                    android:minWidth="0dp"
+                    android:text="5×"
+                    android:textSize="11sp"
+                    app:backgroundTint="#1261A0" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/simulationSpeed10Button"
+                    android:layout_width="0dp"
+                    android:layout_height="42dp"
+                    android:layout_weight="0.9"
+                    android:minWidth="0dp"
+                    android:text="10×"
+                    android:textSize="11sp"
+                    app:backgroundTint="#1261A0" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/simulationStopButton"
+                    android:layout_width="0dp"
+                    android:layout_height="42dp"
+                    android:layout_weight="1.0"
+                    android:minWidth="0dp"
+                    android:text="Stop"
+                    android:textSize="11sp"
+                    app:backgroundTint="#D32F2F" />
+            </LinearLayout>
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/importGpxButton"
