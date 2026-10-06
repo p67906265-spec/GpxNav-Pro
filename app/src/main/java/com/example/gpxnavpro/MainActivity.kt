@@ -4359,9 +4359,32 @@ class MainActivity : AppCompatActivity(), LocationListener {
         val point = simulationPointAt(progressMeters) ?: return
         val source = mapLibreMap?.style
             ?.getSourceAs<GeoJsonSource>(SIMULATION_SOURCE_ID) ?: return
+
         source.setGeoJson(
             Feature.fromGeometry(Point.fromLngLat(point.longitude, point.latitude))
         )
+
+        centerSimulationCamera(point)
+    }
+
+    private fun centerSimulationCamera(point: GpxPoint) {
+        val map = mapLibreMap ?: return
+
+        // In simulazione il pallino deve restare realmente al centro:
+        // nessun padding "navigazione" e spostamento della mappa sotto al marker.
+        map.setPadding(0, 0, 0, 0)
+
+        val currentCamera = map.cameraPosition
+        val targetZoom = (manualZoomLevel ?: currentCamera.zoom)
+            .coerceAtLeast(SIMULATION_MIN_ZOOM)
+            .coerceAtMost(22.0)
+
+        map.cameraPosition = CameraPosition.Builder()
+            .target(LatLng(point.latitude, point.longitude))
+            .zoom(targetZoom)
+            .bearing(currentCamera.bearing)
+            .tilt(currentCamera.tilt)
+            .build()
     }
 
     private fun simulationPointAt(progressMeters: Double): GpxPoint? {
@@ -4424,6 +4447,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
         }
 
         simulationAlertFeedback.reset()
+        mapLibreMap?.setPadding(0, 0, 0, 0)
 
         if (!silent) {
             Toast.makeText(this, "Simulazione terminata", Toast.LENGTH_SHORT).show()
@@ -4520,6 +4544,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
         private const val SIMULATION_LAYER_ID = "gpx-simulation-layer"
         private const val SIMULATION_TICK_MS = 250L
         private const val SIMULATION_BASE_SPEED_METERS_PER_SECOND = 16.6667
+        private const val SIMULATION_MIN_ZOOM = 16.5
         private const val GPX_ROUTE_SOURCE_ID = "gpx-route-source"
         private const val GPX_ROUTE_LAYER_ID = "gpx-route-layer"
         private const val GPX_EDIT_SELECTION_SOURCE_ID = "gpx-edit-selection-source"

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.12
+- In simulazione il pallino arancione resta centrato sullo schermo.
+- È la mappa a scorrere sotto al pallino durante l'avanzamento.
+- La simulazione mantiene zoom, inclinazione e orientamento correnti.
+- Impostato uno zoom minimo per evitare una simulazione troppo distante.
+
 ## 1.11
 - Aggiunta voce "Guida comandi" nel menu laterale con spiegazione dei pulsanti di modifica.
 - Aggiunta "Simula giro" alle azioni di ogni traccia GPX.
