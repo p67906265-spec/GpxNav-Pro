@@ -32,20 +32,37 @@ class ImportService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val action = intent?.action ?: return START_NOT_STICKY
-        val uri = intent.getStringExtra(EXTRA_URI)?.let(Uri::parse) ?: return START_NOT_STICKY
-        val kind = if (action == ACTION_IMPORT_MAP) "Mappa" else "GPX"
+        // startForegroundService() richiede che il servizio entri SEMPRE subito
+        // in foreground, anche nei rami di errore/uscita anticipata.
+        startForeground(
+            NOTIFICATION_ID,
+            buildNotification("Preparazione importazione…", indeterminate = true)
+        )
 
-        if (!IMPORT_BUSY.compareAndSet(false, true)) {
-            deliver(ImportServiceResult.Failed(kind, "Un'altra importazione è già in corso"))
+        val action = intent?.action
+        if (action == null) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf(startId)
             return START_NOT_STICKY
         }
 
-        startForeground(
-            NOTIFICATION_ID,
-            buildNotification("Importazione $kind…", indeterminate = true)
-        )
+        val kind = if (action == ACTION_IMPORT_MAP) "Mappa" else "GPX"
+        val uri = intent.getStringExtra(EXTRA_URI)?.let(Uri::parse)
+        if (uri == null) {
+            deliver(ImportServiceResult.Failed(kind, "URI di importazione mancante"))
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf(startId)
+            return START_NOT_STICKY
+        }
+
+        if (!IMPORT_BUSY.compareAndSet(false, true)) {
+            deliver(ImportServiceResult.Failed(kind, "Un'altra importazione è già in corso"))
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf(startId)
+            return START_NOT_STICKY
+        }
+
+        updateNotification("Importazione $kind…", null)
 
         executor.execute {
             val result = runCatching {

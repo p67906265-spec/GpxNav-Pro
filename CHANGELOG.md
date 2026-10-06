@@ -1,4 +1,14 @@
-# Changelog — GPX NAV Pro
+# Changelog
+
+## 1.9
+- ImportService entra immediatamente in foreground in ogni ramo di avvio.
+- Matching e feedback acustico/vibrazione restano attivi nel servizio GPS anche senza UI.
+- Reset del progresso a ogni nuova navigazione e recupero dopo fuori-percorso prolungato.
+- Servizio posizione `START_NOT_STICKY`; eventuale sessione viene ripristinata dall'Activity.
+- Richiesta runtime di `POST_NOTIFICATIONS` su Android 13+ prima della navigazione background.
+- `ToneGenerator` protetto da `runCatching` per evitare crash su dispositivi incompatibili.
+
+ — GPX NAV Pro
 
 ## 1.8
 - NavigationEngine reso testabile su JVM con `NavigationSample` e distanza Haversine.

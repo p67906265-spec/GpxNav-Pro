@@ -90,11 +90,11 @@ class MainActivity : AppCompatActivity(), LocationListener {
     private val navigationEngine = NavigationEngine()
     private val routeAlertEngine = RouteAlertEngine()
     private val approachNavigationEngine = NavigationEngine()
-    private val alertFeedback by lazy { AlertFeedback(this) }
     private val turnInstructionEngine = TurnInstructionEngine()
     private lateinit var bRouterClient: BRouterClient
     private var wasOffRoute = false
     private var isNavigationActive = false
+    private var pendingNavigationStartAfterNotificationPermission = false
     private var isApproachingStart = false
     private var activeApproachRoute: GpxRoute? = null
     private var approachOffRouteFixCount = 0
@@ -169,6 +169,35 @@ class MainActivity : AppCompatActivity(), LocationListener {
                 message = "Permesso posizione non concesso",
                 showButton = false
             )
+        }
+    }
+
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            if (pendingNavigationStartAfterNotificationPermission) {
+                pendingNavigationStartAfterNotificationPermission = false
+                startNavigation()
+            } else {
+                restoreNavigationServiceIfNeeded()
+            }
+        } else {
+            pendingNavigationStartAfterNotificationPermission = false
+            if (isNavigationActive && !NavigationLocationService.isRunning) {
+                isNavigationActive = false
+                binding.startNavigationButton.text = "AVVIA"
+                getSharedPreferences(PREFS_NAVIGATION, Context.MODE_PRIVATE)
+                    .edit()
+                    .putBoolean(PREF_NAVIGATION_ACTIVE, false)
+                    .putBoolean(PREF_NAVIGATION_MAIN_ROUTE_ACTIVE, false)
+                    .apply()
+            }
+            Toast.makeText(
+                this,
+                "Abilita le notifiche per usare la navigazione in background",
+                Toast.LENGTH_LONG
+            ).show()
         }
     }
 
@@ -665,13 +694,26 @@ class MainActivity : AppCompatActivity(), LocationListener {
             return
         }
 
+        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            pendingNavigationStartAfterNotificationPermission = true
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            return
+        }
+
+        navigationEngine.resetProgress()
+        approachNavigationEngine.resetProgress()
         isNavigationActive = true
         getSharedPreferences(PREFS_NAVIGATION, Context.MODE_PRIVATE)
             .edit()
             .putBoolean(PREF_NAVIGATION_ACTIVE, true)
             .putString(PREF_NAVIGATION_ROUTE_PATH, activeRouteFile?.absolutePath)
+            .putBoolean(PREF_NAVIGATION_MAIN_ROUTE_ACTIVE, false)
             .apply()
-        alertFeedback.reset()
         NavigationLocationService.start(this)
         runCatching { locationManager.removeUpdates(this) }
         setFollowGps(true)
@@ -798,6 +840,11 @@ class MainActivity : AppCompatActivity(), LocationListener {
     private fun beginMainRouteNavigation() {
         isApproachingStart = false
         activeApproachRoute = null
+        navigationEngine.resetProgress()
+        getSharedPreferences(PREFS_NAVIGATION, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(PREF_NAVIGATION_MAIN_ROUTE_ACTIVE, true)
+            .apply()
         approachOffRouteFixCount = 0
         isApproachRecalculationInProgress = false
         binding.turnPanel.visibility = View.GONE
@@ -822,7 +869,6 @@ class MainActivity : AppCompatActivity(), LocationListener {
             return
         }
 
-        alertFeedback.routeAlert(activeAlert)
         val type = activeAlert.alert.type
         val distance = formatNavigationDistance(activeAlert.distanceMeters.coerceAtLeast(0.0))
         val eventKilometer = String.format(
@@ -850,10 +896,10 @@ class MainActivity : AppCompatActivity(), LocationListener {
         getSharedPreferences(PREFS_NAVIGATION, Context.MODE_PRIVATE)
             .edit()
             .putBoolean(PREF_NAVIGATION_ACTIVE, false)
+            .putBoolean(PREF_NAVIGATION_MAIN_ROUTE_ACTIVE, false)
             .remove(PREF_NAVIGATION_ROUTE_PATH)
             .apply()
         NavigationLocationService.stop(this)
-        alertFeedback.reset()
         isApproachingStart = false
         activeApproachRoute = null
         approachOffRouteFixCount = 0
@@ -933,7 +979,6 @@ class MainActivity : AppCompatActivity(), LocationListener {
         } else if (wasOffRoute) {
             binding.offRoutePanel.visibility = View.GONE
         }
-        alertFeedback.offRoute(isOffRoute)
         wasOffRoute = isOffRoute
     }
 
@@ -2119,13 +2164,36 @@ class MainActivity : AppCompatActivity(), LocationListener {
     private fun restoreNavigationSessionIfNeeded(file: File) {
         val preferences = getSharedPreferences(PREFS_NAVIGATION, Context.MODE_PRIVATE)
         val shouldRestore = preferences.getBoolean(PREF_NAVIGATION_ACTIVE, false) &&
-            preferences.getString(PREF_NAVIGATION_ROUTE_PATH, null) == file.absolutePath &&
-            NavigationLocationService.isRunning
+            preferences.getString(PREF_NAVIGATION_ROUTE_PATH, null) == file.absolutePath
         if (!shouldRestore) return
 
         isNavigationActive = true
         binding.startNavigationButton.text = "STOP"
+
+        if (!NavigationLocationService.isRunning) {
+            if (android.os.Build.VERSION.SDK_INT >= 33 &&
+                ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            } else {
+                NavigationLocationService.start(this)
+            }
+        }
+
         NavigationLocationService.lastLocation?.let { onLocationChanged(it) }
+    }
+
+    private fun restoreNavigationServiceIfNeeded() {
+        val file = activeRouteFile ?: return
+        val preferences = getSharedPreferences(PREFS_NAVIGATION, Context.MODE_PRIVATE)
+        val shouldRestore = preferences.getBoolean(PREF_NAVIGATION_ACTIVE, false) &&
+            preferences.getString(PREF_NAVIGATION_ROUTE_PATH, null) == file.absolutePath
+        if (shouldRestore && !NavigationLocationService.isRunning) {
+            NavigationLocationService.start(this)
+        }
     }
 
     private fun drawRoute(style: Style, route: GpxRoute, zoomToRoute: Boolean, file: File? = activeRouteFile) {
@@ -3890,7 +3958,6 @@ class MainActivity : AppCompatActivity(), LocationListener {
             bRouterClient.close()
         }
         fileExecutor.shutdownNow()
-        alertFeedback.release()
         binding.mapView.onDestroy()
         mapLibreMap = null
         super.onDestroy()
@@ -3956,6 +4023,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
         private const val PREFS_NAVIGATION = "navigation_settings"
         private const val PREF_NAVIGATION_ACTIVE = "navigation_active"
         private const val PREF_NAVIGATION_ROUTE_PATH = "navigation_route_path"
+        private const val PREF_NAVIGATION_MAIN_ROUTE_ACTIVE = "navigation_main_route_active"
         private const val DEFAULT_ALERT_DISTANCE = 1000
         private val ALERT_DISTANCE_OPTIONS = intArrayOf(250, 500, 1000, 1500, 2000, 3000)
         private val ROUTE_ARROW_SPACING = intArrayOf(100, 200, 300, 500, 750, 1000)

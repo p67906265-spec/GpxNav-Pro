@@ -76,6 +76,7 @@ class NavigationEngine {
     private var originLatitudeRadians = 0.0
     private var lastSegmentIndex: Int? = null
     private var lastProgressMeters = 0.0
+    private var offRouteFixCount = 0
 
     fun setRoute(route: GpxRoute) {
         this.route = route
@@ -125,6 +126,7 @@ class NavigationEngine {
     fun resetProgress() {
         lastSegmentIndex = null
         lastProgressMeters = 0.0
+        offRouteFixCount = 0
     }
 
     fun match(location: Location): NavigationFix? = match(
@@ -165,6 +167,25 @@ class NavigationEngine {
             if (forwardCandidate.distanceMeters <= candidate.distanceMeters + FORWARD_DISTANCE_SLACK_METERS) {
                 candidate = forwardCandidate
             }
+        }
+
+        val effectiveCandidateDistance = (
+            candidate.distanceMeters -
+                sample.accuracyMeters.coerceIn(0.0, MAX_ACCURACY_ALLOWANCE_METERS)
+            ).coerceAtLeast(0.0)
+
+        if (effectiveCandidateDistance > OFF_ROUTE_THRESHOLD_METERS) {
+            offRouteFixCount++
+        } else {
+            offRouteFixCount = 0
+        }
+
+        // Se siamo fuori percorso per diversi fix consecutivi, consenti al
+        // matching di riagganciarsi anche a un tratto precedente della traccia.
+        if (offRouteFixCount >= OFF_ROUTE_RECOVERY_FIXES) {
+            lastProgressMeters = candidate.progressMeters.coerceIn(0.0, currentRoute.distanceMeters)
+            lastSegmentIndex = candidate.segment.index
+            offRouteFixCount = 0
         }
 
         val monotonicProgress = maxOf(lastProgressMeters, candidate.progressMeters)
@@ -278,6 +299,8 @@ class NavigationEngine {
 
     companion object {
         const val OFF_ROUTE_THRESHOLD_METERS = 60.0
+        private const val MAX_ACCURACY_ALLOWANCE_METERS = 35.0
+        private const val OFF_ROUTE_RECOVERY_FIXES = 6
         private const val FULL_SEARCH_DISTANCE_METERS = 250.0
         private const val SEARCH_WINDOW = 300
         private const val FORWARD_RECOVERY_WINDOW = 600

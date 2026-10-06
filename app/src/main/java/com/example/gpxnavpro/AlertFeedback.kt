@@ -10,7 +10,7 @@ import android.os.VibratorManager
 
 class AlertFeedback(context: Context) {
     private val appContext = context.applicationContext
-    private val toneGenerator = ToneGenerator(AudioManager.STREAM_MUSIC, 85)
+    private val toneGenerator: ToneGenerator? = runCatching { ToneGenerator(AudioManager.STREAM_MUSIC, 85) }.getOrNull()
     private val notifiedRouteAlerts = mutableSetOf<String>()
     private var offRouteActive = false
 
@@ -29,11 +29,11 @@ class AlertFeedback(context: Context) {
         when (type) {
             RouteAlertType.DANGER -> {
                 vibrate(longArrayOf(0, 180, 120, 180, 120, 260))
-                toneGenerator.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 700)
+                playTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 700)
             }
             RouteAlertType.TV -> {
                 vibrate(longArrayOf(0, 140, 100, 140))
-                toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP2, 450)
+                playTone(ToneGenerator.TONE_PROP_BEEP2, 450)
             }
             else -> Unit
         }
@@ -42,13 +42,17 @@ class AlertFeedback(context: Context) {
     fun offRoute(isOffRoute: Boolean) {
         if (isOffRoute && !offRouteActive) {
             vibrate(longArrayOf(0, 220, 120, 220, 120, 220))
-            toneGenerator.startTone(ToneGenerator.TONE_SUP_ERROR, 650)
+            playTone(ToneGenerator.TONE_SUP_ERROR, 650)
         }
         offRouteActive = isOffRoute
     }
 
     fun release() {
-        toneGenerator.release()
+        runCatching { toneGenerator?.release() }
+    }
+
+    private fun playTone(tone: Int, durationMs: Int) {
+        runCatching { toneGenerator?.startTone(tone, durationMs) }
     }
 
     private fun vibrate(pattern: LongArray) {
