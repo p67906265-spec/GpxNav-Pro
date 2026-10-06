@@ -38,12 +38,12 @@ jobs:
           ./gradlew clean assembleRelease
 
       - name: Rinomina APK
-        run: cp app/build/outputs/apk/release/app-release.apk GpxNav-Pro-v1.5-info-pendenze-release-firmato.apk
+        run: cp app/build/outputs/apk/release/app-release.apk GpxNav-Pro-v1.6-salva-navigazione-release-firmato.apk
 
       - name: Pubblica APK
         uses: actions/upload-artifact@v4
         with:
-          name: GpxNav-Pro-v1.5-info-pendenze-release-firmato
-          path: GpxNav-Pro-v1.5-info-pendenze-release-firmato.apk
+          name: GpxNav-Pro-v1.6-salva-navigazione-release-firmato
+          path: GpxNav-Pro-v1.6-salva-navigazione-release-firmato.apk
           if-no-files-found: error
           retention-days: 30

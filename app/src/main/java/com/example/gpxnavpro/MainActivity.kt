@@ -2943,7 +2943,6 @@ class MainActivity : AppCompatActivity(), LocationListener {
                     }
                 }
                 Toast.makeText(this, "Impostazioni percorso salvate", Toast.LENGTH_SHORT).show()
-                showRoutesDialog()
             }
             .create()
         settingsDialog.setOnShowListener { styleBlueDialog(settingsDialog) }
