@@ -21,6 +21,19 @@ jobs:
           java-version: "17"
           cache: gradle
 
+      - name: Leggi versione dal Gradle
+        shell: bash
+        run: |
+          VERSION_NAME=$(sed -n 's/.*versionName = "\([^"]*\)".*/\1/p' app/build.gradle.kts | head -n 1)
+          test -n "$VERSION_NAME"
+          echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
+          echo "APK_NAME=GpxNav-Pro-v${VERSION_NAME}-release-firmato.apk" >> "$GITHUB_ENV"
+
+      - name: Esegui test JVM
+        run: |
+          chmod +x gradlew
+          ./gradlew testDebugUnitTest
+
       - name: Prepara la firma permanente
         env:
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
@@ -34,16 +47,15 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          chmod +x gradlew
           ./gradlew clean assembleRelease
 
       - name: Rinomina APK
-        run: cp app/build/outputs/apk/release/app-release.apk GpxNav-Pro-v1.7-stabilita-import-release-firmato.apk
+        run: cp app/build/outputs/apk/release/app-release.apk "$APK_NAME"
 
       - name: Pubblica APK
         uses: actions/upload-artifact@v4
         with:
-          name: GpxNav-Pro-v1.7-stabilita-import-release-firmato
-          path: GpxNav-Pro-v1.7-stabilita-import-release-firmato.apk
+          name: GpxNav-Pro-v${{ env.VERSION_NAME }}-release-firmato
+          path: ${{ env.APK_NAME }}
           if-no-files-found: error
           retention-days: 30

@@ -14,7 +14,6 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.net.Uri
 import android.os.Bundle
-import android.os.StatFs
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.AbsoluteSizeSpan
@@ -69,7 +68,6 @@ import org.maplibre.geojson.Feature
 import org.maplibre.geojson.Point
 import org.maplibre.geojson.LineString
 import java.io.File
-import java.lang.ref.WeakReference
 import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity(), LocationListener {
@@ -92,6 +90,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
     private val navigationEngine = NavigationEngine()
     private val routeAlertEngine = RouteAlertEngine()
     private val approachNavigationEngine = NavigationEngine()
+    private val alertFeedback by lazy { AlertFeedback(this) }
     private val turnInstructionEngine = TurnInstructionEngine()
     private lateinit var bRouterClient: BRouterClient
     private var wasOffRoute = false
@@ -201,7 +200,6 @@ class MainActivity : AppCompatActivity(), LocationListener {
 
         locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
         bRouterClient = BRouterClient(this)
-        cleanupMapImportArtifacts()
         updateRecenterButtonColor()
 
         binding.recenterButton.setOnClickListener {
@@ -521,6 +519,11 @@ class MainActivity : AppCompatActivity(), LocationListener {
     }
 
     private fun startLocationUpdates() {
+        if (NavigationLocationService.isRunning) {
+            NavigationLocationService.lastLocation?.let { onLocationChanged(it) }
+            return
+        }
+
         val fineGranted = ContextCompat.checkSelfPermission(
             this, Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
@@ -663,6 +666,14 @@ class MainActivity : AppCompatActivity(), LocationListener {
         }
 
         isNavigationActive = true
+        getSharedPreferences(PREFS_NAVIGATION, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(PREF_NAVIGATION_ACTIVE, true)
+            .putString(PREF_NAVIGATION_ROUTE_PATH, activeRouteFile?.absolutePath)
+            .apply()
+        alertFeedback.reset()
+        NavigationLocationService.start(this)
+        runCatching { locationManager.removeUpdates(this) }
         setFollowGps(true)
         binding.eventAlertPanel.visibility = View.GONE
         binding.startNavigationButton.text = "STOP"
@@ -705,6 +716,12 @@ class MainActivity : AppCompatActivity(), LocationListener {
             }.onFailure { error ->
                 isNavigationActive = false
                 isApproachingStart = false
+                getSharedPreferences(PREFS_NAVIGATION, Context.MODE_PRIVATE)
+                    .edit()
+                    .putBoolean(PREF_NAVIGATION_ACTIVE, false)
+                    .apply()
+                NavigationLocationService.stop(this)
+                startLocationUpdates()
                 binding.startNavigationButton.text = "AVVIA"
                 binding.turnPanel.visibility = View.GONE
                 showStatus(
@@ -805,6 +822,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
             return
         }
 
+        alertFeedback.routeAlert(activeAlert)
         val type = activeAlert.alert.type
         val distance = formatNavigationDistance(activeAlert.distanceMeters.coerceAtLeast(0.0))
         val eventKilometer = String.format(
@@ -829,6 +847,13 @@ class MainActivity : AppCompatActivity(), LocationListener {
 
     private fun stopNavigation() {
         isNavigationActive = false
+        getSharedPreferences(PREFS_NAVIGATION, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(PREF_NAVIGATION_ACTIVE, false)
+            .remove(PREF_NAVIGATION_ROUTE_PATH)
+            .apply()
+        NavigationLocationService.stop(this)
+        alertFeedback.reset()
         isApproachingStart = false
         activeApproachRoute = null
         approachOffRouteFixCount = 0
@@ -840,6 +865,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
         binding.eventAlertPanel.visibility = View.GONE
         mapLibreMap?.style?.let(::removeApproachRoute)
         wasOffRoute = false
+        startLocationUpdates()
         Toast.makeText(this, "Navigazione terminata", Toast.LENGTH_SHORT).show()
     }
 
@@ -907,6 +933,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
         } else if (wasOffRoute) {
             binding.offRoutePanel.visibility = View.GONE
         }
+        alertFeedback.offRoute(isOffRoute)
         wasOffRoute = isOffRoute
     }
 
@@ -1788,14 +1815,20 @@ class MainActivity : AppCompatActivity(), LocationListener {
     }
 
     private fun warnIfRouteOutsideOfflineMap(route: GpxRoute) {
-        val outside = route.points.any { point ->
-            point.longitude < OFFLINE_MIN_LON || point.longitude > OFFLINE_MAX_LON ||
-                point.latitude < OFFLINE_MIN_LAT || point.latitude > OFFLINE_MAX_LAT
-        }
+        val mapFile = installedMapFile()
+        if (!mapFile.exists()) return
+
+        val bounds = runCatching { PmtilesHeaderReader.read(mapFile).bounds }
+            .getOrNull() ?: return
+        val outside = route.points.any { point -> !bounds.contains(point) }
         if (!outside) return
+
         AlertDialog.Builder(this)
             .setTitle("Mappa offline incompleta")
-            .setMessage("Una parte del percorso GPX, compreso eventualmente il punto di arrivo, non è coperta dalla mappa offline installata. Durante la navigazione la mappa potrebbe risultare vuota in quella zona.")
+            .setMessage(
+                "Una parte del percorso GPX è fuori dai bounds dichiarati dalla mappa PMTiles installata. " +
+                    "Durante la navigazione la mappa potrebbe risultare vuota in quella zona."
+            )
             .setPositiveButton("Continua", null)
             .setNegativeButton("Chiudi", null)
             .show()
@@ -2023,96 +2056,16 @@ class MainActivity : AppCompatActivity(), LocationListener {
 
     private fun importGpx(uri: Uri) {
         showStatus(
-            message = "Importazione GPX…",
+            message = "Importazione GPX in background…",
             showButton = false
         )
-
-        fileExecutor.execute {
-            var temporaryFile: File? = null
-
-            val result = runCatching {
-                val displayName = queryDisplayName(uri) ?: "percorso.gpx"
-                require(displayName.endsWith(".gpx", ignoreCase = true)) {
-                    "Seleziona un file con estensione .gpx"
-                }
-
-                val directory = gpxDirectory()
-                directory.mkdirs()
-
-                val safeName = displayName.replace(Regex("[^A-Za-z0-9._-]"), "_")
-                var destination = File(directory, safeName)
-                var counter = 2
-                while (destination.exists()) {
-                    val base = safeName.substringBeforeLast('.', safeName)
-                    destination = File(directory, "${base}_$counter.gpx")
-                    counter++
-                }
-
-                temporaryFile = File(
-                    directory,
-                    ".${destination.name}.importing-${System.nanoTime()}"
-                )
-
-                contentResolver.openInputStream(uri).use { input ->
-                    requireNotNull(input) { "Il file GPX selezionato non è leggibile" }
-                    temporaryFile!!.outputStream().buffered().use { output ->
-                        input.copyTo(output, DEFAULT_BUFFER_SIZE)
-                    }
-                }
-
-                require(temporaryFile!!.length() > 0L) {
-                    "Il file GPX selezionato è vuoto"
-                }
-
-                // Prima validiamo e analizziamo il GPX. Solo un file valido
-                // può diventare la traccia attiva dell'app.
-                val route = temporaryFile!!.inputStream().buffered().use { input ->
-                    GpxParser.parse(input, destination.name)
-                }
-
-                require(temporaryFile!!.renameTo(destination)) {
-                    "Impossibile completare l'importazione GPX"
-                }
-                temporaryFile = null
-
-                getPreferences(Context.MODE_PRIVATE).edit()
-                    .putString(PREF_ACTIVE_GPX, destination.absolutePath)
-                    .apply()
-
-                destination to route
-            }
-
-            temporaryFile?.delete()
-
-            runOnUiThread {
-                result.onSuccess { (file, route) ->
-                    activeRouteFile = file
-                    activeRoute = route
-                    navigationEngine.setRoute(route)
-                    routeAlertEngine.setRoute(route, loadManualAlertKilometers(route))
-                    prepareNavigationForRoute()
-                    mapLibreMap?.style?.let {
-                        drawRoute(it, route, zoomToRoute = true, file = file)
-                    }
-                    warnIfRouteOutsideOfflineMap(route)
-                    populateDrawerRoutes()
-                    showStatus(
-                        message = "${route.name}\n${formatDistance(route.distanceMeters)} · ${route.points.size} punti",
-                        showButton = false
-                    )
-                    binding.statusPanel.postDelayed({
-                        if (!isFinishing && !isDestroyed) {
-                            binding.statusPanel.visibility = View.GONE
-                        }
-                    }, 2200L)
-                }.onFailure { error ->
-                    showStatus(
-                        message = "Importazione GPX non riuscita:\n${error.message ?: "Errore sconosciuto"}",
-                        showButton = false
-                    )
-                }
-            }
+        runCatching {
+            contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
         }
+        ImportService.importGpx(this, uri)
     }
 
     private fun loadInstalledGpx(style: Style) {
@@ -2141,6 +2094,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
                     navigationEngine.setRoute(route)
                     routeAlertEngine.setRoute(route, loadManualAlertKilometers(route))
                     prepareNavigationForRoute()
+                    restoreNavigationSessionIfNeeded(file)
                     val style = styleOverride ?: mapLibreMap?.style
                     if (style != null) drawRoute(style, route, zoomToRoute, file)
                     updateRouteHeader(route)
@@ -2160,6 +2114,18 @@ class MainActivity : AppCompatActivity(), LocationListener {
                 }
             }
         }
+    }
+
+    private fun restoreNavigationSessionIfNeeded(file: File) {
+        val preferences = getSharedPreferences(PREFS_NAVIGATION, Context.MODE_PRIVATE)
+        val shouldRestore = preferences.getBoolean(PREF_NAVIGATION_ACTIVE, false) &&
+            preferences.getString(PREF_NAVIGATION_ROUTE_PATH, null) == file.absolutePath &&
+            NavigationLocationService.isRunning
+        if (!shouldRestore) return
+
+        isNavigationActive = true
+        binding.startNavigationButton.text = "STOP"
+        NavigationLocationService.lastLocation?.let { onLocationChanged(it) }
     }
 
     private fun drawRoute(style: Style, route: GpxRoute, zoomToRoute: Boolean, file: File? = activeRouteFile) {
@@ -3576,224 +3542,41 @@ class MainActivity : AppCompatActivity(), LocationListener {
     // =========================================================
 
     private fun importMap(uri: Uri) {
-        if (mapImportInProgress) {
-            showStatus(
-                message = "Importazione mappa già in corso…",
-                showButton = false
-            )
-            return
-        }
-
-        val displayName = queryDisplayName(uri)
-        if (displayName != null && !displayName.endsWith(".pmtiles", ignoreCase = true)) {
-            showStatus(
-                message = "Importazione non riuscita:\nSeleziona un file con estensione .pmtiles",
-                showButton = true
-            )
-            return
-        }
-
-        val sourceSize = queryFileSize(uri)
-        val appContext = applicationContext
-        val baseDirectory = appContext.getExternalFilesDir(null) ?: appContext.filesDir
-        val mapDirectory = File(baseDirectory, "maps").apply { mkdirs() }
-        val destination = File(mapDirectory, "friuli.pmtiles")
-        val temporaryFile = File(mapDirectory, "friuli.importing")
-        val backupFile = File(mapDirectory, "friuli.backup")
-        val activityRef = WeakReference(this)
-
-        val availableBytes = StatFs(mapDirectory.absolutePath).availableBytes
-        val reserveBytes = 16L * 1024L * 1024L
-
-        if (sourceSize != null && sourceSize > 0L &&
-            availableBytes < sourceSize + reserveBytes
-        ) {
-            showStatus(
-                message = "Spazio insufficiente per importare la mappa.\n" +
-                    "Servono almeno ${formatMegabytes(sourceSize + reserveBytes)}.",
-                showButton = true
-            )
-            return
-        }
-
-        mapImportInProgress = true
         showStatus(
-            message = "Importazione mappa… 0%",
+            message = "Importazione mappa in background…",
             showButton = false
         )
+        runCatching {
+            contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+        }
+        ImportService.importMap(this, uri)
+    }
 
-        MAP_IMPORT_EXECUTOR.execute {
-            var completed = false
-
-            val result = runCatching {
-                temporaryFile.delete()
-
-                val maxWritableBytes = (StatFs(mapDirectory.absolutePath).availableBytes - reserveBytes)
-                    .coerceAtLeast(0L)
-
-                appContext.contentResolver.openInputStream(uri).use { input ->
-                    requireNotNull(input) {
-                        "Il file selezionato non è leggibile"
-                    }
-
-                    temporaryFile.outputStream().buffered().use { output ->
-                        val buffer = ByteArray(1024 * 1024)
-                        var copied = 0L
-                        var lastUiUpdate = 0L
-
-                        while (true) {
-                            val read = input.read(buffer)
-                            if (read < 0) break
-
-                            copied += read
-                            require(copied <= maxWritableBytes) {
-                                "Spazio insufficiente durante l'importazione"
-                            }
-
-                            output.write(buffer, 0, read)
-
-                            val now = System.currentTimeMillis()
-                            if (now - lastUiUpdate >= 400L) {
-                                lastUiUpdate = now
-                                postToActiveActivity { activity ->
-                                    val progressText = if (sourceSize != null && sourceSize > 0L) {
-                                        val percent = ((copied * 100L) / sourceSize)
-                                            .coerceIn(0L, 99L)
-                                        "Importazione mappa… $percent%"
-                                    } else {
-                                        "Importazione mappa… ${formatMegabytes(copied)} copiati"
-                                    }
-                                    activity.showStatus(progressText, false)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                require(temporaryFile.length() > 0L) {
-                    "Il file selezionato è vuoto"
-                }
-
-                validatePmtilesHeader(temporaryFile)
-
-                // Mantiene la mappa precedente finché la nuova non è stata
-                // copiata e validata completamente.
-                backupFile.delete()
-                if (destination.exists()) {
-                    require(destination.renameTo(backupFile)) {
-                        "Impossibile mettere al sicuro la mappa precedente"
-                    }
-                }
-
-                if (!temporaryFile.renameTo(destination)) {
-                    if (backupFile.exists() && !destination.exists()) {
-                        backupFile.renameTo(destination)
-                    }
-                    error("Impossibile completare l'importazione")
-                }
-
-                backupFile.delete()
-
-                appContext.getSharedPreferences(PREFS_MAP, Context.MODE_PRIVATE)
-                    .edit()
-                    .putString(PREF_MAP_MODE, MAP_MODE_OFFLINE)
-                    .apply()
-
-                completed = true
-            }
-
-            if (!completed) {
-                temporaryFile.delete()
-                if (!destination.exists() && backupFile.exists()) {
-                    backupFile.renameTo(destination)
+    private fun handleImportResult(result: ImportServiceResult) {
+        when (result) {
+            is ImportServiceResult.GpxImported -> {
+                val file = File(result.filePath)
+                showStatus("GPX importato correttamente", false)
+                openGpxFile(file, zoomToRoute = true) {
+                    populateDrawerRoutes()
                 }
             }
-
-            mapImportInProgress = false
-
-            result.onSuccess {
-                mapImportCompletionPending = true
-                postToActiveActivity { activity ->
-                    mapImportCompletionPending = false
-                    activity.showStatus(
-                        message = "Mappa importata correttamente",
-                        showButton = false
-                    )
-                    activity.loadInstalledMap()
-                }
-            }.onFailure { error ->
-                postToActiveActivity { activity ->
-                    activity.showStatus(
-                        message = "Importazione non riuscita:\n" +
-                            (error.message ?: "Errore sconosciuto"),
-                        showButton = true
-                    )
-                }
+            ImportServiceResult.MapImported -> {
+                showStatus("Mappa importata correttamente", false)
+                saveMapMode(MAP_MODE_OFFLINE)
+                loadInstalledMap()
+            }
+            is ImportServiceResult.Failed -> {
+                showStatus(
+                    "Importazione ${result.kind} non riuscita:\n${result.message}",
+                    true
+                )
             }
         }
     }
-
-    private fun queryFileSize(uri: Uri): Long? {
-        val projection = arrayOf(android.provider.OpenableColumns.SIZE)
-
-        val cursorSize = contentResolver.query(uri, projection, null, null, null)?.use { cursor ->
-            val columnIndex = cursor.getColumnIndex(android.provider.OpenableColumns.SIZE)
-            if (columnIndex >= 0 && cursor.moveToFirst() && !cursor.isNull(columnIndex)) {
-                cursor.getLong(columnIndex).takeIf { it >= 0L }
-            } else {
-                null
-            }
-        }
-
-        if (cursorSize != null) return cursorSize
-
-        return runCatching {
-            contentResolver.openAssetFileDescriptor(uri, "r")?.use { descriptor ->
-                descriptor.length.takeIf { it >= 0L }
-            }
-        }.getOrNull()
-    }
-
-    private fun validatePmtilesHeader(file: File) {
-        val header = ByteArray(8)
-        val read = file.inputStream().buffered().use { input ->
-            input.read(header)
-        }
-
-        require(read == header.size) {
-            "File PMTiles troppo corto o non valido"
-        }
-
-        val magic = header.copyOfRange(0, 7).toString(Charsets.US_ASCII)
-        val version = header[7].toInt() and 0xFF
-
-        require(magic == "PMTiles") {
-            "Il file selezionato non è un archivio PMTiles valido"
-        }
-        require(version == 3) {
-            "Versione PMTiles non supportata: $version"
-        }
-    }
-
-    private fun cleanupMapImportArtifacts() {
-        val destination = installedMapFile()
-        val directory = destination.parentFile ?: return
-        val temporaryFile = File(directory, "friuli.importing")
-        val backupFile = File(directory, "friuli.backup")
-
-        if (!mapImportInProgress) {
-            temporaryFile.delete()
-
-            if (!destination.exists() && backupFile.exists()) {
-                backupFile.renameTo(destination)
-            } else if (destination.exists()) {
-                backupFile.delete()
-            }
-        }
-    }
-
-    private fun formatMegabytes(bytes: Long): String =
-        String.format(java.util.Locale.ITALY, "%.1f MB", bytes / (1024.0 * 1024.0))
 
     private fun queryDisplayName(uri: Uri): String? {
         val projection = arrayOf(android.provider.OpenableColumns.DISPLAY_NAME)
@@ -4061,22 +3844,13 @@ class MainActivity : AppCompatActivity(), LocationListener {
 
     override fun onStart() {
         super.onStart()
-        CURRENT_ACTIVITY = WeakReference(this)
-        binding.mapView.onStart()
-
-        if (mapImportInProgress) {
-            showStatus(
-                message = "Importazione mappa in corso…",
-                showButton = false
-            )
-        } else if (mapImportCompletionPending) {
-            mapImportCompletionPending = false
-            showStatus(
-                message = "Mappa importata correttamente",
-                showButton = false
-            )
-            loadInstalledMap()
+        NavigationLocationService.listener = { location ->
+            if (!isFinishing && !isDestroyed) onLocationChanged(location)
         }
+        ImportService.setListener(::handleImportResult)
+        ImportService.consumePendingResult(this)?.let(::handleImportResult)
+        NavigationLocationService.lastLocation?.let { lastLocation = it }
+        binding.mapView.onStart()
     }
 
     override fun onResume() {
@@ -4090,9 +3864,8 @@ class MainActivity : AppCompatActivity(), LocationListener {
     }
 
     override fun onStop() {
-        if (CURRENT_ACTIVITY?.get() === this) {
-            CURRENT_ACTIVITY = null
-        }
+        NavigationLocationService.listener = null
+        ImportService.setListener(null)
         binding.mapView.onStop()
         super.onStop()
     }
@@ -4117,26 +3890,13 @@ class MainActivity : AppCompatActivity(), LocationListener {
             bRouterClient.close()
         }
         fileExecutor.shutdownNow()
+        alertFeedback.release()
         binding.mapView.onDestroy()
         mapLibreMap = null
         super.onDestroy()
     }
 
     companion object {
-        private val MAP_IMPORT_EXECUTOR = Executors.newSingleThreadExecutor()
-        @Volatile private var mapImportInProgress = false
-        @Volatile private var mapImportCompletionPending = false
-        @Volatile private var CURRENT_ACTIVITY: WeakReference<MainActivity>? = null
-
-        private fun postToActiveActivity(block: (MainActivity) -> Unit) {
-            val activity = CURRENT_ACTIVITY?.get() ?: return
-            activity.runOnUiThread {
-                if (!activity.isFinishing && !activity.isDestroyed) {
-                    block(activity)
-                }
-            }
-        }
-
         private const val STATE_INCOMING_GPX_HANDLED = "incoming_gpx_handled"
         private const val MAP_SOURCE_ID = "offline-map-source"
         private const val ONLINE_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
@@ -4194,6 +3954,8 @@ class MainActivity : AppCompatActivity(), LocationListener {
         private const val ALERT_MARKER_OFFSET_METERS = 45.0
         private const val PREF_ACTIVE_GPX = "active_gpx_path"
         private const val PREFS_NAVIGATION = "navigation_settings"
+        private const val PREF_NAVIGATION_ACTIVE = "navigation_active"
+        private const val PREF_NAVIGATION_ROUTE_PATH = "navigation_route_path"
         private const val DEFAULT_ALERT_DISTANCE = 1000
         private val ALERT_DISTANCE_OPTIONS = intArrayOf(250, 500, 1000, 1500, 2000, 3000)
         private val ROUTE_ARROW_SPACING = intArrayOf(100, 200, 300, 500, 750, 1000)
@@ -4216,10 +3978,6 @@ class MainActivity : AppCompatActivity(), LocationListener {
             RouteAlertType.DANGER
         )
 
-        private const val OFFLINE_MIN_LON = 12.30
-        private const val OFFLINE_MAX_LON = 13.95
-        private const val OFFLINE_MIN_LAT = 45.50
-        private const val OFFLINE_MAX_LAT = 46.70
         private val FRIULI_VENEZIA_GIULIA = LatLng(46.0711, 13.2346)
     }
 }

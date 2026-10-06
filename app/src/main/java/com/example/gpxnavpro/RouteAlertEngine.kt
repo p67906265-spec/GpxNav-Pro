@@ -1,6 +1,5 @@
 package com.example.gpxnavpro
 
-import android.location.Location
 import java.text.Normalizer
 import kotlin.math.cos
 import kotlin.math.hypot
@@ -166,17 +165,8 @@ class RouteAlertEngine {
         return bestProgress.coerceIn(0.0, route.distanceMeters)
     }
 
-    private fun distance(start: GpxPoint, end: GpxPoint): Double {
-        val result = FloatArray(1)
-        Location.distanceBetween(
-            start.latitude,
-            start.longitude,
-            end.latitude,
-            end.longitude,
-            result
-        )
-        return result[0].toDouble()
-    }
+    private fun distance(start: GpxPoint, end: GpxPoint): Double =
+        GeoMath.haversineMeters(start, end)
 
     private fun priority(type: RouteAlertType): Int = when (type) {
         RouteAlertType.DANGER -> 0
