@@ -1807,7 +1807,6 @@ class MainActivity : AppCompatActivity(), LocationListener {
                     setTextColor(android.graphics.Color.parseColor("#D7E8FF"))
                     textSize = 13f
                 })
-                val actions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
                 val openButton = Button(this).apply {
                     text = "Apri"
                     styleMenuButton(this)
@@ -1822,6 +1821,14 @@ class MainActivity : AppCompatActivity(), LocationListener {
                     setOnClickListener {
                         routesDialog?.dismiss()
                         showRouteAppearanceSettings(file)
+                    }
+                }
+                val infoButton = Button(this).apply {
+                    text = "Info"
+                    styleMenuButton(this)
+                    setOnClickListener {
+                        routesDialog?.dismiss()
+                        showRouteInfo(file)
                     }
                 }
                 val deleteButton = Button(this).apply {
@@ -1850,10 +1857,18 @@ class MainActivity : AppCompatActivity(), LocationListener {
                         deleteDialog.show()
                     }
                 }
-                actions.addView(openButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-                actions.addView(settingsButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.25f))
-                actions.addView(deleteButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-                row.addView(actions)
+                val actionsTop = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                }
+                val actionsBottom = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                }
+                actionsTop.addView(openButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+                actionsTop.addView(infoButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+                actionsBottom.addView(settingsButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.2f))
+                actionsBottom.addView(deleteButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 0.8f))
+                row.addView(actionsTop)
+                row.addView(actionsBottom)
                 container.addView(row)
                 container.addView(View(this).apply {
                     setBackgroundColor(0x22000000)
@@ -1875,6 +1890,116 @@ class MainActivity : AppCompatActivity(), LocationListener {
             .create()
         routesDialog?.setOnShowListener { routesDialog?.let(::styleBlueDialog) }
         routesDialog?.show()
+    }
+
+    private fun showRouteInfo(file: File) {
+        showStatus("Calcolo informazioni traccia…", false)
+
+        fileExecutor.execute {
+            val result = runCatching {
+                file.inputStream().buffered().use { input ->
+                    GpxParser.parse(input, file.name)
+                }
+            }
+
+            runOnUiThread {
+                result.onSuccess { route ->
+                    binding.statusPanel.visibility = View.GONE
+                    val points = route.points
+                    val elevations = points.mapNotNull { it.elevation }
+
+                    val message = if (elevations.size < 2) {
+                        buildString {
+                            append("Lunghezza: ")
+                            append(String.format(java.util.Locale.ITALY, "%.1f km", route.distanceMeters / 1000.0))
+                            append("\n\nDati altimetrici non disponibili in questo file GPX.")
+                        }
+                    } else {
+                        var ascent = 0.0
+                        var descent = 0.0
+                        var uphillDistance = 0.0
+                        val cumulative = DoubleArray(points.size)
+
+                        for (index in 1 until points.size) {
+                            val previous = points[index - 1]
+                            val current = points[index]
+                            val segmentDistance = distanceMeters(
+                                previous.latitude, previous.longitude,
+                                current.latitude, current.longitude
+                            )
+                            cumulative[index] = cumulative[index - 1] + segmentDistance
+
+                            val e1 = previous.elevation
+                            val e2 = current.elevation
+                            if (e1 != null && e2 != null) {
+                                val delta = e2 - e1
+                                if (delta > 0.0) {
+                                    ascent += delta
+                                    uphillDistance += segmentDistance
+                                } else if (delta < 0.0) {
+                                    descent += -delta
+                                }
+                            }
+                        }
+
+                        var maxUphill: Double? = null
+                        var maxDownhill: Double? = null
+                        for (index in 1 until points.size) {
+                            val midpoint = (cumulative[index - 1] + cumulative[index]) / 2.0
+                            val windowStartDistance = midpoint - SLOPE_HALF_WINDOW_METERS
+                            val windowEndDistance = midpoint + SLOPE_HALF_WINDOW_METERS
+
+                            var startIndex = index - 1
+                            while (startIndex > 0 && cumulative[startIndex] > windowStartDistance) startIndex--
+                            var endIndex = index
+                            while (endIndex < points.lastIndex && cumulative[endIndex] < windowEndDistance) endIndex++
+
+                            val startElevation = points[startIndex].elevation
+                            val endElevation = points[endIndex].elevation
+                            val horizontalDistance = cumulative[endIndex] - cumulative[startIndex]
+                            if (startElevation != null && endElevation != null && horizontalDistance >= MIN_SLOPE_SAMPLE_METERS) {
+                                val grade = (endElevation - startElevation) / horizontalDistance * 100.0
+                                if (grade > 0.0 && grade > (maxUphill ?: Double.NEGATIVE_INFINITY)) maxUphill = grade
+                                if (grade < 0.0 && grade < (maxDownhill ?: Double.POSITIVE_INFINITY)) maxDownhill = grade
+                            }
+                        }
+
+                        val averageUphill = if (uphillDistance >= 1.0) ascent / uphillDistance * 100.0 else 0.0
+                        buildString {
+                            append("Lunghezza: ")
+                            append(String.format(java.util.Locale.ITALY, "%.1f km", route.distanceMeters / 1000.0))
+                            append("\n\nDislivello +: ")
+                            append(String.format(java.util.Locale.ITALY, "%.0f m", ascent))
+                            append("\nDislivello -: ")
+                            append(String.format(java.util.Locale.ITALY, "%.0f m", descent))
+                            append("\n\nQuota minima: ")
+                            append(String.format(java.util.Locale.ITALY, "%.0f m", elevations.minOrNull() ?: 0.0))
+                            append("\nQuota massima: ")
+                            append(String.format(java.util.Locale.ITALY, "%.0f m", elevations.maxOrNull() ?: 0.0))
+                            append("\n\nPendenza media salita: ")
+                            append(String.format(java.util.Locale.ITALY, "%.1f%%", averageUphill))
+                            append("\nPendenza max salita: ")
+                            append(maxUphill?.let { String.format(java.util.Locale.ITALY, "%.1f%%", it) } ?: "--")
+                            append("\nPendenza max discesa: ")
+                            append(maxDownhill?.let { String.format(java.util.Locale.ITALY, "%.1f%%", it) } ?: "--")
+                        }
+                    }
+
+                    val dialog = AlertDialog.Builder(this)
+                        .setTitle("Info traccia — ${route.name}")
+                        .setMessage(message)
+                        .setPositiveButton("Chiudi", null)
+                        .create()
+                    dialog.setOnShowListener { styleBlueDialog(dialog) }
+                    dialog.show()
+                }.onFailure { error ->
+                    showStatus(
+                        "Impossibile leggere le informazioni:\n${error.message ?: "Errore sconosciuto"}",
+                        false
+                    )
+                }
+            }
+        }
     }
 
     private fun importGpx(uri: Uri) {
@@ -1989,12 +2114,16 @@ class MainActivity : AppCompatActivity(), LocationListener {
         removeRouteLayers(style)
         val appearance = file?.let { loadRouteAppearance(it) } ?: RouteAppearance()
 
-        val coloredRouteFeatures = buildSlopeColoredRouteFeatures(route, appearance.color)
+        val routeFeatures = if (appearance.useSlopeColors) {
+            buildSlopeColoredRouteFeatures(route, appearance.color)
+        } else {
+            buildUniformRouteFeatures(route, appearance.color)
+        }
 
         style.addSource(
             GeoJsonSource(
                 GPX_ROUTE_SOURCE_ID,
-                org.maplibre.geojson.FeatureCollection.fromFeatures(coloredRouteFeatures)
+                org.maplibre.geojson.FeatureCollection.fromFeatures(routeFeatures)
             )
         )
 
@@ -2081,6 +2210,19 @@ class MainActivity : AppCompatActivity(), LocationListener {
 
         updateRouteHeader(route)
         if (zoomToRoute) zoomToRoute(route)
+    }
+
+    private fun buildUniformRouteFeatures(route: GpxRoute, color: String): List<Feature> {
+        if (route.points.size < 2) return emptyList()
+
+        val coordinates = route.points.map { point ->
+            Point.fromLngLat(point.longitude, point.latitude)
+        }
+        return listOf(
+            Feature.fromGeometry(LineString.fromLngLats(coordinates)).apply {
+                addStringProperty(SLOPE_COLOR_PROPERTY, color)
+            }
+        )
     }
 
     private fun buildSlopeColoredRouteFeatures(
@@ -2679,29 +2821,48 @@ class MainActivity : AppCompatActivity(), LocationListener {
             setPadding(42, 18, 42, 8)
         }
 
+        var selectedColor = current.color
+        var useSlopeColors = current.useSlopeColors
         val colorLabel = TextView(this).apply {
-            text = "Colore traccia: ${colorName(current.color)}"
+            text = if (useSlopeColors) {
+                "Colore traccia: Pendenza"
+            } else {
+                "Colore traccia: ${colorName(selectedColor)}"
+            }
             textSize = 17f
             setTypeface(typeface, android.graphics.Typeface.BOLD)
             setPadding(0, 12, 0, 12)
+            setTextColor(
+                if (useSlopeColors) android.graphics.Color.WHITE
+                else android.graphics.Color.parseColor(selectedColor)
+            )
         }
-        var selectedColor = current.color
         colorLabel.setOnClickListener {
-            val names = ROUTE_COLORS.map { colorName(it) }.toTypedArray()
-            val selectedIndex = ROUTE_COLORS.indexOf(selectedColor).coerceAtLeast(0)
+            val names = (ROUTE_COLORS.map { colorName(it) } + "Pendenza").toTypedArray()
+            val selectedIndex = if (useSlopeColors) {
+                ROUTE_COLORS.size
+            } else {
+                ROUTE_COLORS.indexOf(selectedColor).coerceAtLeast(0)
+            }
             val colorDialog = AlertDialog.Builder(this)
                 .setTitle("Colore traccia")
                 .setSingleChoiceItems(names, selectedIndex) { dialog, which ->
-                    selectedColor = ROUTE_COLORS[which]
-                    colorLabel.text = "Colore traccia: ${colorName(selectedColor)}"
-                    colorLabel.setTextColor(android.graphics.Color.parseColor(selectedColor))
+                    if (which == ROUTE_COLORS.size) {
+                        useSlopeColors = true
+                        colorLabel.text = "Colore traccia: Pendenza"
+                        colorLabel.setTextColor(android.graphics.Color.WHITE)
+                    } else {
+                        useSlopeColors = false
+                        selectedColor = ROUTE_COLORS[which]
+                        colorLabel.text = "Colore traccia: ${colorName(selectedColor)}"
+                        colorLabel.setTextColor(android.graphics.Color.parseColor(selectedColor))
+                    }
                     dialog.dismiss()
                 }
                 .create()
             colorDialog.setOnShowListener { styleBlueDialog(colorDialog) }
             colorDialog.show()
         }
-        colorLabel.setTextColor(android.graphics.Color.parseColor(selectedColor))
         container.addView(colorLabel)
 
         container.addView(TextView(this).apply {
@@ -2790,7 +2951,8 @@ class MainActivity : AppCompatActivity(), LocationListener {
                     color = selectedColor,
                     width = selectedWidth.toFloat(),
                     showDirectionArrows = arrowsCheck.isChecked,
-                    arrowSpacingMeters = selectedSpacing
+                    arrowSpacingMeters = selectedSpacing,
+                    useSlopeColors = useSlopeColors
                 )
                 saveRouteAppearance(file, appearance)
                 if (activeRouteFile?.absolutePath == file.absolutePath) {
@@ -2903,7 +3065,8 @@ class MainActivity : AppCompatActivity(), LocationListener {
             color = preferences.getString("${prefix}_color", "#005BBB") ?: "#005BBB",
             width = preferences.getFloat("${prefix}_width", 7f),
             showDirectionArrows = preferences.getBoolean("${prefix}_arrows", true),
-            arrowSpacingMeters = preferences.getInt("${prefix}_spacing", 300)
+            arrowSpacingMeters = preferences.getInt("${prefix}_spacing", 300),
+            useSlopeColors = preferences.getBoolean("${prefix}_slope_colors", false)
         )
     }
 
@@ -2915,6 +3078,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
             .putFloat("${prefix}_width", appearance.width)
             .putBoolean("${prefix}_arrows", appearance.showDirectionArrows)
             .putInt("${prefix}_spacing", appearance.arrowSpacingMeters)
+            .putBoolean("${prefix}_slope_colors", appearance.useSlopeColors)
             .apply()
     }
 
