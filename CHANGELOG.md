@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.10
+- Aggiunta funzione "Unisci con un'altra traccia" dentro Modifica traccia.
+- La seconda traccia viene invertita automaticamente se il suo punto finale è più vicino alla fine della prima.
+- Aggiunta conferma con distanza del collegamento tra le due tracce.
+- Aggiunta funzione "Ripeti traccia" da 2 a 30 giri, con valore iniziale 6.
+- Le tracce originali non vengono modificate: viene sempre creato un nuovo GPX.
+- Aggiunti test JVM per unione, inversione automatica e ripetizione dei giri.
+
 ## 1.9
 - ImportService entra immediatamente in foreground in ogni ramo di avvio.
 - Matching e feedback acustico/vibrazione restano attivi nel servizio GPS anche senza UI.

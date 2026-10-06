@@ -306,6 +306,12 @@ class MainActivity : AppCompatActivity(), LocationListener {
                 "Sposta il mirino sul punto GPX da modificare"
             )
         }
+        binding.editMergeRouteButton.setOnClickListener {
+            showMergeRouteDialog()
+        }
+        binding.editRepeatRouteButton.setOnClickListener {
+            showRepeatRouteDialog()
+        }
         binding.editCenterRouteButton.setOnClickListener {
             activeRoute?.let(::zoomToRoute)
         }
@@ -1467,6 +1473,186 @@ class MainActivity : AppCompatActivity(), LocationListener {
             setFollowGps(false)
         }
     }
+
+    private fun showMergeRouteDialog() {
+        val firstFile = activeRouteFile ?: return
+        val firstRoute = activeRoute ?: return
+
+        val candidates = gpxDirectory()
+            .listFiles { file -> file.extension.equals("gpx", true) }
+            ?.filter { file ->
+                runCatching { file.canonicalPath != firstFile.canonicalPath }
+                    .getOrDefault(file.absolutePath != firstFile.absolutePath)
+            }
+            ?.sortedBy { it.name.lowercase() }
+            .orEmpty()
+
+        if (candidates.isEmpty()) {
+            Toast.makeText(
+                this,
+                "Non ci sono altre tracce GPX da unire",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+
+        val names = candidates.map { it.nameWithoutExtension }.toTypedArray()
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Unisci con seconda traccia")
+            .setItems(names) { _, which ->
+                val secondFile = candidates[which]
+                loadSecondRouteForMerge(firstRoute, secondFile)
+            }
+            .setNegativeButton("Annulla", null)
+            .create()
+        dialog.setOnShowListener { styleBlueDialog(dialog) }
+        dialog.show()
+    }
+
+    private fun loadSecondRouteForMerge(
+        firstRoute: GpxRoute,
+        secondFile: File
+    ) {
+        showStatus("Analisi seconda traccia…", false)
+
+        fileExecutor.execute {
+            val result = runCatching {
+                val secondRoute = secondFile.inputStream().buffered().use { input ->
+                    GpxParser.parse(input, secondFile.name)
+                }
+                val merge = GpxTrackEditor.merge(firstRoute.points, secondRoute.points)
+                Triple(secondRoute, merge, secondFile)
+            }
+
+            runOnUiThread {
+                binding.statusPanel.visibility = View.GONE
+
+                result.onSuccess { (secondRoute, merge, file) ->
+                    val connectionText = if (merge.connectionMeters < 1000.0) {
+                        "${merge.connectionMeters.toInt()} m"
+                    } else {
+                        String.format(
+                            java.util.Locale.ITALY,
+                            "%.1f km",
+                            merge.connectionMeters / 1000.0
+                        )
+                    }
+
+                    val directionText = if (merge.secondReversed) {
+                        "La seconda traccia verrà invertita automaticamente."
+                    } else {
+                        "La seconda traccia mantiene il suo verso."
+                    }
+
+                    val warning = if (merge.connectionMeters > MERGE_CONNECTION_WARNING_METERS) {
+                        "\n\nAttenzione: tra le due tracce c'è un collegamento di $connectionText."
+                    } else {
+                        ""
+                    }
+
+                    val confirm = AlertDialog.Builder(this)
+                        .setTitle("Unire le tracce?")
+                        .setMessage(
+                            "Prima: ${firstRoute.name}\n" +
+                                "Seconda: ${secondRoute.name}\n\n" +
+                                "$directionText\n" +
+                                "Distanza collegamento: $connectionText$warning"
+                        )
+                        .setNegativeButton("Annulla", null)
+                        .setPositiveButton("Unisci") { _, _ ->
+                            val mergedWaypoints = (
+                                firstRoute.waypoints + secondRoute.waypoints
+                            ).distinctBy { waypoint ->
+                                "${waypoint.latitude}:${waypoint.longitude}:${waypoint.name}"
+                            }
+                            saveEditedGpx(
+                                merge.points,
+                                mergedWaypoints,
+                                "unita_${safeSuffix(file.nameWithoutExtension)}"
+                            )
+                        }
+                        .create()
+                    confirm.setOnShowListener { styleBlueDialog(confirm) }
+                    confirm.show()
+                }.onFailure { error ->
+                    Toast.makeText(
+                        this,
+                        "Impossibile leggere la seconda traccia: ${error.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+    }
+
+    private fun showRepeatRouteDialog() {
+        val route = activeRoute ?: return
+        if (route.points.size < 2) return
+
+        val picker = NumberPicker(this).apply {
+            minValue = 2
+            maxValue = 30
+            value = 6
+            wrapSelectorWheel = false
+        }
+
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(
+                (24 * resources.displayMetrics.density).toInt(),
+                (8 * resources.displayMetrics.density).toInt(),
+                (24 * resources.displayMetrics.density).toInt(),
+                0
+            )
+            addView(TextView(this@MainActivity).apply {
+                text = "Numero totale di giri"
+                textSize = 16f
+                setTextColor(android.graphics.Color.WHITE)
+                setPadding(0, 0, 0, 8)
+            })
+            addView(picker)
+        }
+
+        val closureGap = GpxTrackEditor.closureGapMeters(route.points)
+        val message = if (closureGap > REPEAT_CLOSURE_WARNING_METERS) {
+            val gapText = if (closureGap < 1000.0) {
+                "${closureGap.toInt()} m"
+            } else {
+                String.format(
+                    java.util.Locale.ITALY,
+                    "%.1f km",
+                    closureGap / 1000.0
+                )
+            }
+            "La traccia non è perfettamente chiusa: tra fine e inizio ci sono $gapText. " +
+                "Ogni giro verrà comunque collegato al successivo."
+        } else {
+            "La traccia è adatta alla ripetizione in più giri."
+        }
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Ripeti traccia")
+            .setMessage(message)
+            .setView(container)
+            .setNegativeButton("Annulla", null)
+            .setPositiveButton("Crea") { _, _ ->
+                val laps = picker.value
+                val repeatedPoints = GpxTrackEditor.repeat(route.points, laps)
+                saveEditedGpx(
+                    repeatedPoints,
+                    route.waypoints,
+                    "${laps}_giri"
+                )
+            }
+            .create()
+        dialog.setOnShowListener { styleBlueDialog(dialog) }
+        dialog.show()
+    }
+
+    private fun safeSuffix(value: String): String =
+        value.replace(Regex("[^A-Za-z0-9._-]+"), "_")
+            .trim('_')
+            .ifBlank { "traccia" }
 
     private fun finishGpxEditMode() {
         pendingGpxEditAction = null
@@ -3988,6 +4174,8 @@ class MainActivity : AppCompatActivity(), LocationListener {
         private const val EDIT_ACTION_ADD_VIA = "add_via"
         private const val EDIT_ACTION_MOVE_SELECT = "move_select"
         private const val EDIT_ACTION_MOVE_TARGET = "move_target"
+        private const val MERGE_CONNECTION_WARNING_METERS = 250.0
+        private const val REPEAT_CLOSURE_WARNING_METERS = 100.0
         private const val GPX_ROUTE_SOURCE_ID = "gpx-route-source"
         private const val GPX_ROUTE_LAYER_ID = "gpx-route-layer"
         private const val GPX_EDIT_SELECTION_SOURCE_ID = "gpx-edit-selection-source"
