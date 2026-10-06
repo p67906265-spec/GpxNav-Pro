@@ -557,6 +557,16 @@
         </ScrollView>
 
         <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="6dp"
+            android:gravity="center"
+            android:text="Paolo Free 1.0  •  v1.5"
+            android:textColor="#9FCBFF"
+            android:textSize="12sp" />
+
+        <TextView
             android:id="@+id/closeDrawerButton"
             android:layout_width="match_parent"
             android:layout_height="52dp"
