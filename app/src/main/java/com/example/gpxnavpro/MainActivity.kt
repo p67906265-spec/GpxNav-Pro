@@ -360,13 +360,21 @@ class MainActivity : AppCompatActivity(), LocationListener {
             val map = mapLibreMap ?: return@setOnClickListener
             val targetZoom = (map.cameraPosition.zoom + 1.0).coerceAtMost(22.0)
             manualZoomLevel = targetZoom
-            map.animateCamera(CameraUpdateFactory.zoomTo(targetZoom), 250)
+            if (isSimulationActive) {
+                updateSimulationMarker(simulationProgressMeters)
+            } else {
+                map.animateCamera(CameraUpdateFactory.zoomTo(targetZoom), 250)
+            }
         }
         binding.zoomOutButton.setOnClickListener {
             val map = mapLibreMap ?: return@setOnClickListener
             val targetZoom = (map.cameraPosition.zoom - 1.0).coerceAtLeast(0.0)
             manualZoomLevel = targetZoom
-            map.animateCamera(CameraUpdateFactory.zoomTo(targetZoom), 250)
+            if (isSimulationActive) {
+                updateSimulationMarker(simulationProgressMeters)
+            } else {
+                map.animateCamera(CameraUpdateFactory.zoomTo(targetZoom), 250)
+            }
         }
         binding.importGpxButton.setOnClickListener {
             gpxPicker.launch(
@@ -419,6 +427,9 @@ class MainActivity : AppCompatActivity(), LocationListener {
                 override fun onScaleEnd(detector: StandardScaleGestureDetector) {
                     manualZoomLevel = map.cameraPosition.zoom
                     isScalingMap = false
+                    if (isSimulationActive) {
+                        updateSimulationMarker(simulationProgressMeters)
+                    }
                     updateRecenterButtonColor()
                 }
             })
@@ -4218,6 +4229,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
                     GeoMath.haversineMeters(route.points[index - 1], route.points[index])
         }
 
+        manualZoomLevel = mapLibreMap?.cameraPosition?.zoom ?: manualZoomLevel
         simulationProgressMeters = 0.0
         simulationSpeedMultiplier = 1.0
         simulationLastTickMs = android.os.SystemClock.elapsedRealtime()
@@ -4370,14 +4382,16 @@ class MainActivity : AppCompatActivity(), LocationListener {
     private fun centerSimulationCamera(point: GpxPoint) {
         val map = mapLibreMap ?: return
 
-        // In simulazione il pallino deve restare realmente al centro:
-        // nessun padding "navigazione" e spostamento della mappa sotto al marker.
+        // Durante il pinch lasciamo completamente libera la camera.
+        // Al rilascio verrà memorizzato il nuovo zoom e il pallino
+        // tornerà al centro senza cambiare il livello scelto dall'utente.
+        if (isScalingMap) return
+
         map.setPadding(0, 0, 0, 0)
 
         val currentCamera = map.cameraPosition
         val targetZoom = (manualZoomLevel ?: currentCamera.zoom)
-            .coerceAtLeast(SIMULATION_MIN_ZOOM)
-            .coerceAtMost(22.0)
+            .coerceIn(0.0, 22.0)
 
         map.cameraPosition = CameraPosition.Builder()
             .target(LatLng(point.latitude, point.longitude))
@@ -4544,7 +4558,6 @@ class MainActivity : AppCompatActivity(), LocationListener {
         private const val SIMULATION_LAYER_ID = "gpx-simulation-layer"
         private const val SIMULATION_TICK_MS = 250L
         private const val SIMULATION_BASE_SPEED_METERS_PER_SECOND = 16.6667
-        private const val SIMULATION_MIN_ZOOM = 16.5
         private const val GPX_ROUTE_SOURCE_ID = "gpx-route-source"
         private const val GPX_ROUTE_LAYER_ID = "gpx-route-layer"
         private const val GPX_EDIT_SELECTION_SOURCE_ID = "gpx-edit-selection-source"

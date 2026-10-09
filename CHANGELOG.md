@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.13
+- Zoom completamente variabile durante la simulazione.
+- Rimossa la soglia minima che riportava automaticamente la mappa allo zoom precedente.
+- Pinch libero: durante il gesto la camera non viene ricentrata forzatamente.
+- Al termine del pinch il pallino torna al centro mantenendo esattamente lo zoom scelto.
+- I pulsanti + e - cambiano immediatamente lo zoom anche durante la simulazione.
+
 ## 1.12
 - In simulazione il pallino arancione resta centrato sullo schermo.
 - È la mappa a scorrere sotto al pallino durante l'avanzamento.
