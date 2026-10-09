@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.21
+- Rimosso il pulsante Chiudi dal menu laterale: il drawer si chiude toccando la mappa/sfondo.
+- Il riquadro FINE ora apre un pannello per impostare manualmente i km del campo INIZIO.
+- I km inseriti diventano la base del contatore INIZIO e aumentano con l'avanzamento lungo la traccia.
+- Aggiunto comando Azzera nel pannello dei km iniziali.
+- Il valore impostato viene memorizzato.
+- Rimosso keepScreenOn fisso dal layout: resta valida l'opzione solo durante la navigazione.
+
 ## 1.20
 - Menu laterale reso più compatto e più vicino al mockup approvato.
 - Migliorata la distanza dalla barra di stato.

@@ -6,7 +6,6 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#E9E7D8"
-    android:keepScreenOn="true"
     tools:context=".MainActivity">
 
     <org.maplibre.android.maps.MapView
@@ -736,25 +735,9 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     android:gravity="center"
-                    android:text="Paolo Free 1.0  •  v1.20"
+                    android:text="Paolo Free 1.0  •  v1.21"
                     android:textColor="#9FCBFF"
                     android:textSize="12sp" />
-
-                <TextView
-                    android:id="@+id/closeDrawerButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="50dp"
-                    android:layout_marginTop="10dp"
-                    android:layout_marginBottom="24dp"
-                    android:background="@drawable/bg_drawer_close"
-                    android:drawableStart="@drawable/ic_close"
-                    android:drawablePadding="12dp"
-                    android:gravity="center_vertical"
-                    android:paddingStart="12dp"
-                    android:paddingEnd="12dp"
-                    android:text="Chiudi"
-                    android:textColor="#D9ECFF"
-                    android:textSize="15sp" />
             </LinearLayout>
         </ScrollView>
     </LinearLayout>

@@ -16,6 +16,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.text.InputType
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.AbsoluteSizeSpan
@@ -23,6 +24,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.CheckBox
+import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.Toast
 import android.widget.LinearLayout
@@ -89,6 +91,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
     private var routesDialog: AlertDialog? = null
     private var currentRouteProgressMeters = 0.0
     private var tripResetOffsetMeters = 0.0
+    private var manualStartKilometers: Double = 0.0
 
     private val simulationHandler = Handler(Looper.getMainLooper())
     private var isSimulationActive = false
@@ -237,6 +240,10 @@ class MainActivity : AppCompatActivity(), LocationListener {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        manualStartKilometers = getSharedPreferences(PREFS_DISPLAY, Context.MODE_PRIVATE)
+            .getFloat(PREF_MANUAL_START_KM, 0f)
+            .toDouble()
+
         locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
         bRouterClient = BRouterClient(this)
         applyKeepScreenOnPreference()
@@ -249,10 +256,12 @@ class MainActivity : AppCompatActivity(), LocationListener {
         binding.startNavigationButton.setOnClickListener {
             toggleNavigation()
         }
+        binding.finishPanel.setOnClickListener {
+            showStartKilometersDialog()
+        }
 
         binding.menuButton.setOnClickListener { openDrawer() }
         binding.drawerScrim.setOnClickListener { closeDrawer() }
-        binding.closeDrawerButton.setOnClickListener { closeDrawer() }
         binding.trackSectionHeader.setOnClickListener {
             toggleDrawerSection(
                 binding.trackSectionHeader,
@@ -2815,19 +2824,94 @@ class MainActivity : AppCompatActivity(), LocationListener {
     private fun updateDistancePanels() {
         val route = activeRoute
         if (route == null) {
-            binding.startDistanceText.text = formatDistancePanel("0,0")
+            binding.startDistanceText.text = formatDistancePanel(
+                String.format(java.util.Locale.ITALY, "%.1f", manualStartKilometers)
+            )
             binding.finishDistanceText.text = formatDistancePanel("--,-")
             return
         }
 
-        val displayedStart = (currentRouteProgressMeters - tripResetOffsetMeters).coerceAtLeast(0.0)
+        val routeProgressFromResetMeters =
+            (currentRouteProgressMeters - tripResetOffsetMeters).coerceAtLeast(0.0)
+        val displayedStartKilometers =
+            manualStartKilometers + (routeProgressFromResetMeters / 1000.0)
         val remaining = (route.distanceMeters - currentRouteProgressMeters).coerceAtLeast(0.0)
         binding.startDistanceText.text = formatDistancePanel(
-            String.format(java.util.Locale.ITALY, "%.1f", displayedStart / 1000.0)
+            String.format(java.util.Locale.ITALY, "%.1f", displayedStartKilometers)
         )
         binding.finishDistanceText.text = formatDistancePanel(
             String.format(java.util.Locale.ITALY, "%.1f", remaining / 1000.0)
         )
+    }
+
+    private fun showStartKilometersDialog() {
+        val density = resources.displayMetrics.density
+        val input = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
+            hint = "Km iniziali"
+            setSingleLine(true)
+            setSelectAllOnFocus(true)
+            setText(
+                if (manualStartKilometers == 0.0) ""
+                else String.format(java.util.Locale.ITALY, "%.1f", manualStartKilometers)
+            )
+            setPadding(
+                (18 * density).toInt(),
+                (10 * density).toInt(),
+                (18 * density).toInt(),
+                (10 * density).toInt()
+            )
+        }
+
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(
+                (20 * density).toInt(),
+                (8 * density).toInt(),
+                (20 * density).toInt(),
+                0
+            )
+            addView(input)
+        }
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Km campo INIZIO")
+            .setMessage("Inserisci i km da visualizzare nel campo INIZIO.")
+            .setView(container)
+            .setPositiveButton("Imposta", null)
+            .setNeutralButton("Azzera", null)
+            .setNegativeButton("Annulla", null)
+            .create()
+
+        dialog.setOnShowListener {
+            styleBlueDialog(dialog)
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val rawValue = input.text.toString().trim().replace(',', '.')
+                val kilometers = rawValue.toDoubleOrNull()
+                if (kilometers == null || kilometers < 0.0 || kilometers > 99999.9) {
+                    input.error = "Inserisci un valore valido"
+                    return@setOnClickListener
+                }
+                manualStartKilometers = kilometers
+                getSharedPreferences(PREFS_DISPLAY, Context.MODE_PRIVATE)
+                    .edit()
+                    .putFloat(PREF_MANUAL_START_KM, kilometers.toFloat())
+                    .apply()
+                updateDistancePanels()
+                dialog.dismiss()
+            }
+            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
+                manualStartKilometers = 0.0
+                getSharedPreferences(PREFS_DISPLAY, Context.MODE_PRIVATE)
+                    .edit()
+                    .putFloat(PREF_MANUAL_START_KM, 0f)
+                    .apply()
+                updateDistancePanels()
+                dialog.dismiss()
+            }
+            input.requestFocus()
+        }
+        dialog.show()
     }
 
     private fun formatDistancePanel(number: String): SpannableString {
@@ -4719,6 +4803,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
         private const val ONLINE_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
         private const val PREFS_DISPLAY = "display_settings"
         private const val PREF_KEEP_SCREEN_ON_NAVIGATION = "keep_screen_on_navigation"
+        private const val PREF_MANUAL_START_KM = "manual_start_km"
         private const val PREFS_MAP = "map_settings"
         private const val PREF_MAP_MODE = "map_mode"
         private const val MAP_MODE_ONLINE = "online"
