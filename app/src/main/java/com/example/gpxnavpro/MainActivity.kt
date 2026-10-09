@@ -2031,6 +2031,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
                     "Info traccia",
                     "Simula giro",
                     "Modifica traccia",
+                    "Rinomina",
                     "Salva",
                     "Condividi",
                     "Elimina traccia"
@@ -2042,17 +2043,86 @@ class MainActivity : AppCompatActivity(), LocationListener {
                     1 -> showRouteInfo(file)
                     2 -> openGpxFile(file, zoomToRoute = true) { startSimulation() }
                     3 -> openGpxFile(file, zoomToRoute = true) { showGpxEditorStart() }
-                    4 -> {
+                    4 -> showRenameRouteDialog(file)
+                    5 -> {
                         pendingExportFile = file
                         exportGpxLauncher.launch(file.name)
                     }
-                    5 -> shareGpx(file)
-                    6 -> confirmDeleteDrawerRoute(file)
+                    6 -> shareGpx(file)
+                    7 -> confirmDeleteDrawerRoute(file)
                 }
             }
             .setNegativeButton("Annulla", null)
             .create()
         dialog.setOnShowListener { styleBlueDialog(dialog) }
+        dialog.show()
+    }
+
+    private fun showRenameRouteDialog(file: File) {
+        val input = EditText(this).apply {
+            setSingleLine(true)
+            setSelectAllOnFocus(true)
+            setText(file.nameWithoutExtension)
+        }
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Rinomina traccia")
+            .setMessage("Inserisci il nuovo nome della traccia.")
+            .setView(input)
+            .setPositiveButton("Rinomina", null)
+            .setNegativeButton("Annulla", null)
+            .create()
+
+        dialog.setOnShowListener {
+            styleBlueDialog(dialog)
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val requested = input.text.toString().trim()
+                if (requested.isBlank()) {
+                    input.error = "Inserisci un nome"
+                    return@setOnClickListener
+                }
+
+                val safeName = safeSuffix(
+                    requested.removeSuffix(".gpx").removeSuffix(".GPX")
+                )
+                val target = File(file.parentFile, "$safeName.gpx")
+
+                if (target.absolutePath.equals(file.absolutePath, ignoreCase = true)) {
+                    dialog.dismiss()
+                    return@setOnClickListener
+                }
+                if (target.exists()) {
+                    input.error = "Esiste già una traccia con questo nome"
+                    return@setOnClickListener
+                }
+
+                val oldPath = file.absolutePath
+                if (!file.renameTo(target)) {
+                    Toast.makeText(this, "Impossibile rinominare la traccia", Toast.LENGTH_LONG).show()
+                    return@setOnClickListener
+                }
+
+                if (activeRouteFile?.absolutePath == oldPath) {
+                    activeRouteFile = target
+                    getPreferences(Context.MODE_PRIVATE)
+                        .edit()
+                        .putString(PREF_ACTIVE_GPX, target.absolutePath)
+                        .apply()
+                }
+
+                val navPrefs = getSharedPreferences(PREFS_NAVIGATION, Context.MODE_PRIVATE)
+                if (navPrefs.getString(PREF_NAVIGATION_ROUTE_PATH, null) == oldPath) {
+                    navPrefs.edit()
+                        .putString(PREF_NAVIGATION_ROUTE_PATH, target.absolutePath)
+                        .apply()
+                }
+
+                populateDrawerRoutes()
+                Toast.makeText(this, "Traccia rinominata", Toast.LENGTH_SHORT).show()
+                dialog.dismiss()
+            }
+            input.requestFocus()
+        }
         dialog.show()
     }
 
@@ -2851,9 +2921,16 @@ class MainActivity : AppCompatActivity(), LocationListener {
             hint = "Km iniziali"
             setSingleLine(true)
             setSelectAllOnFocus(true)
+            val currentDisplayedKilometers = if (activeRoute == null) {
+                manualStartKilometers
+            } else {
+                val routeProgressFromResetMeters =
+                    (currentRouteProgressMeters - tripResetOffsetMeters).coerceAtLeast(0.0)
+                manualStartKilometers + (routeProgressFromResetMeters / 1000.0)
+            }
             setText(
-                if (manualStartKilometers == 0.0) ""
-                else String.format(java.util.Locale.ITALY, "%.1f", manualStartKilometers)
+                if (currentDisplayedKilometers == 0.0) ""
+                else String.format(java.util.Locale.ITALY, "%.1f", currentDisplayedKilometers)
             )
             setPadding(
                 (18 * density).toInt(),
@@ -2892,10 +2969,16 @@ class MainActivity : AppCompatActivity(), LocationListener {
                     input.error = "Inserisci un valore valido"
                     return@setOnClickListener
                 }
-                manualStartKilometers = kilometers
+                val routeProgressFromResetKilometers = if (activeRoute == null) {
+                    0.0
+                } else {
+                    (currentRouteProgressMeters - tripResetOffsetMeters)
+                        .coerceAtLeast(0.0) / 1000.0
+                }
+                manualStartKilometers = kilometers - routeProgressFromResetKilometers
                 getSharedPreferences(PREFS_DISPLAY, Context.MODE_PRIVATE)
                     .edit()
-                    .putFloat(PREF_MANUAL_START_KM, kilometers.toFloat())
+                    .putFloat(PREF_MANUAL_START_KM, manualStartKilometers.toFloat())
                     .apply()
                 updateDistancePanels()
                 dialog.dismiss()

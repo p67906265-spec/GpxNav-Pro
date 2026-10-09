@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.22
+- Aggiunta l'azione Rinomina nelle opzioni della traccia.
+- La rinomina aggiorna anche la traccia attiva e il percorso salvato per la navigazione.
+- Corretto il pannello FINE: il valore digitato sostituisce i km mostrati in INIZIO invece di sommarsi ai km già percorsi.
+- Dopo l'impostazione, il valore INIZIO continua ad aumentare normalmente con l'avanzamento.
+
 ## 1.21
 - Rimosso il pulsante Chiudi dal menu laterale: il drawer si chiude toccando la mappa/sfondo.
 - Il riquadro FINE ora apre un pannello per impostare manualmente i km del campo INIZIO.
