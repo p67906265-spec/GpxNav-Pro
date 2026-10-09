@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.16.1
+- Corretto errore lint MissingConstraints sul pulsante nascosto importGpxButton.
+- Aggiunti vincoli orizzontale e verticale nel ConstraintLayout.
+- Nessuna baseline lint: l'errore viene corretto realmente.
+
 ## 1.16
 - Aggiunta opzione "Schermo sempre acceso" nel menu laterale.
 - Aggiunto profilo BRouter configurabile: car-fast, trekking, fastbike.

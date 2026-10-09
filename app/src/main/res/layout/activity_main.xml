@@ -606,7 +606,7 @@
             android:layout_marginTop="8dp"
             android:layout_marginBottom="6dp"
             android:gravity="center"
-            android:text="Paolo Free 1.0  •  v1.16"
+            android:text="Paolo Free 1.0  •  v1.16.1"
             android:textColor="#9FCBFF"
             android:textSize="12sp" />
 
@@ -940,6 +940,8 @@
         android:layout_width="1dp"
         android:layout_height="1dp"
         android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
         tools:visibility="gone" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
