@@ -129,6 +129,13 @@ class NavigationEngine {
         offRouteFixCount = 0
     }
 
+    fun restoreProgress(progressMeters: Double) {
+        val currentRoute = route ?: return
+        lastProgressMeters = progressMeters.coerceIn(0.0, currentRoute.distanceMeters)
+        lastSegmentIndex = segmentForProgress(lastProgressMeters)
+        offRouteFixCount = 0
+    }
+
     fun match(location: Location): NavigationFix? = match(
         NavigationSample(
             latitude = location.latitude,

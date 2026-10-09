@@ -27,6 +27,8 @@ class NavigationLocationService : Service(), LocationListener {
     private var activeRoute: GpxRoute? = null
     private var activeRouteFile: File? = null
     private var mainRouteActive = false
+    private var lastPersistedProgressMeters = 0.0
+    private var lastProgressPersistAt = 0L
 
     override fun onCreate() {
         super.onCreate()
@@ -68,6 +70,7 @@ class NavigationLocationService : Service(), LocationListener {
         runCatching { locationManager.removeUpdates(this) }
         runCatching { alertFeedback.release() }
         isRunning = false
+        lastNavigationFix = null
         super.onDestroy()
     }
 
@@ -109,7 +112,17 @@ class NavigationLocationService : Service(), LocationListener {
         activeRoute = route
         activeRouteFile = file
         navigationEngine.setRoute(route)
-        navigationEngine.resetProgress()
+
+        val savedProgress = preferences.getFloat(
+            PREF_NAVIGATION_PROGRESS_METERS,
+            0f
+        ).toDouble()
+        if (savedProgress > 0.0) {
+            navigationEngine.restoreProgress(savedProgress)
+        } else {
+            navigationEngine.resetProgress()
+        }
+
         routeAlertEngine.setRoute(route, loadManualAlerts(route, file))
         alertFeedback.reset()
         mainRouteActive = preferences.getBoolean(PREF_MAIN_ROUTE_ACTIVE, false)
@@ -137,9 +150,11 @@ class NavigationLocationService : Service(), LocationListener {
         }
 
         val fix = navigationEngine.match(location) ?: return
+        lastNavigationFix = fix
         alertFeedback.offRoute(fix.isOffRoute)
 
         val preferences = getSharedPreferences(PREFS_NAVIGATION, Context.MODE_PRIVATE)
+        persistProgressIfNeeded(preferences, fix.progressMeters)
         val activeAlert = routeAlertEngine.activeAlert(fix.progressMeters) { type ->
             preferences.getInt(type.preferenceKey, DEFAULT_ALERT_DISTANCE)
         }
@@ -173,6 +188,23 @@ class NavigationLocationService : Service(), LocationListener {
             .toList()
 
         return entries.groupBy({ it.first }, { it.second })
+    }
+
+    private fun persistProgressIfNeeded(
+        preferences: android.content.SharedPreferences,
+        progressMeters: Double
+    ) {
+        val now = android.os.SystemClock.elapsedRealtime()
+        val progressedEnough = kotlin.math.abs(progressMeters - lastPersistedProgressMeters) >= 25.0
+        val timeElapsed = now - lastProgressPersistAt >= 5_000L
+
+        if (!progressedEnough && !timeElapsed) return
+
+        lastPersistedProgressMeters = progressMeters
+        lastProgressPersistAt = now
+        preferences.edit()
+            .putFloat(PREF_NAVIGATION_PROGRESS_METERS, progressMeters.toFloat())
+            .apply()
     }
 
     private fun requestUpdates() {
@@ -216,6 +248,7 @@ class NavigationLocationService : Service(), LocationListener {
         private const val PREFS_NAVIGATION = "navigation_settings"
         private const val PREF_NAVIGATION_ACTIVE = "navigation_active"
         private const val PREF_NAVIGATION_ROUTE_PATH = "navigation_route_path"
+        private const val PREF_NAVIGATION_PROGRESS_METERS = "navigation_progress_meters"
         private const val PREF_MAIN_ROUTE_ACTIVE = "navigation_main_route_active"
         private const val DEFAULT_ALERT_DISTANCE = 1000
         private const val START_REACHED_DISTANCE_METERS = 40.0
@@ -223,6 +256,8 @@ class NavigationLocationService : Service(), LocationListener {
         @Volatile var isRunning: Boolean = false
             private set
         @Volatile var lastLocation: Location? = null
+            private set
+        @Volatile var lastNavigationFix: NavigationFix? = null
             private set
         @Volatile var listener: ((Location) -> Unit)? = null
 

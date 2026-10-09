@@ -98,6 +98,41 @@ class NavigationEngineTest {
         )
     }
 
+
+    @Test
+    fun restoredProgress_doesNotReturnToFirstLapAtSameGeometry() {
+        val oneLap = listOf(
+            GpxPoint(46.0000, 13.0000),
+            GpxPoint(46.0000, 13.0100),
+            GpxPoint(46.0100, 13.0100),
+            GpxPoint(46.0100, 13.0000),
+            GpxPoint(46.0000, 13.0000)
+        )
+        val repeated = GpxTrackEditor.repeat(oneLap, 6)
+        val route = route(repeated)
+        val engine = NavigationEngine().apply { setRoute(route) }
+
+        val lapLength = oneLap.zipWithNext().sumOf { (a, b) ->
+            GeoMath.haversineMeters(a, b)
+        }
+        val fourthLapProgress = lapLength * 3.0 + 250.0
+        engine.restoreProgress(fourthLapProgress)
+
+        val fix = engine.match(
+            NavigationSample(
+                latitude = 46.0000,
+                longitude = 13.0030,
+                bearingDegrees = 90.0,
+                accuracyMeters = 4.0
+            )
+        )!!
+
+        assertTrue(
+            "Il matching deve restare sul giro ripristinato, non tornare al giro 1",
+            fix.progressMeters >= fourthLapProgress - 20.0
+        )
+    }
+
     private fun route(points: List<GpxPoint>): GpxRoute {
         val distance = points.zipWithNext().sumOf { (a, b) -> GeoMath.haversineMeters(a, b) }
         return GpxRoute("test", points, distance)

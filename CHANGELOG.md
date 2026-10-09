@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.14
+- Gli avvisi GPX vengono generati per ogni passaggio entro 30 m dal waypoint, quindi funzionano su tutti i giri ripetuti.
+- I passaggi consecutivi sullo stesso waypoint vengono deduplicati per evitare doppi avvisi.
+- Il NavigationLocationService è la fonte autorevole del progresso durante la navigazione.
+- L'Activity usa il NavigationFix prodotto dal servizio invece di ricalcolare il matching con un secondo motore.
+- Il progresso viene salvato periodicamente e ripristinato dopo riapertura dell'app o ricreazione del servizio.
+- Aggiunti test per avvisi su 6 giri e ripristino del progresso su tracce ripetute.
+
 ## 1.13
 - Zoom completamente variabile durante la simulazione.
 - Rimossa la soglia minima che riportava automaticamente la mappa allo zoom precedente.

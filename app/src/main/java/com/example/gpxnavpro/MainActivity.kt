@@ -691,14 +691,19 @@ class MainActivity : AppCompatActivity(), LocationListener {
         activeRoute?.let {
             if (isNavigationActive && isApproachingStart) {
                 updateApproachNavigation(location)
-            } else {
-                val navigationFix = navigationEngine.match(location)
-                currentRouteProgressMeters = navigationFix?.progressMeters ?: 0.0
-                updateDistancePanels()
-                if (isNavigationActive) {
+            } else if (isNavigationActive) {
+                val navigationFix = NavigationLocationService.lastNavigationFix
+                if (navigationFix != null) {
+                    currentRouteProgressMeters = navigationFix.progressMeters
+                    updateDistancePanels()
                     updateOffRouteWarning(navigationFix)
                     updateRouteAlertPanel()
                 }
+            } else {
+                // Fuori dalla navigazione reale non facciamo avanzare il
+                // NavigationEngine: evita di "sporcare" il progresso prima
+                // della partenza o passando vicino a tratti finali della traccia.
+                updateDistancePanels()
             }
         }
 
@@ -758,6 +763,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
             .putBoolean(PREF_NAVIGATION_ACTIVE, true)
             .putString(PREF_NAVIGATION_ROUTE_PATH, activeRouteFile?.absolutePath)
             .putBoolean(PREF_NAVIGATION_MAIN_ROUTE_ACTIVE, false)
+            .putFloat(PREF_NAVIGATION_PROGRESS_METERS, 0f)
             .apply()
         NavigationLocationService.start(this)
         runCatching { locationManager.removeUpdates(this) }
@@ -889,6 +895,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
         getSharedPreferences(PREFS_NAVIGATION, Context.MODE_PRIVATE)
             .edit()
             .putBoolean(PREF_NAVIGATION_MAIN_ROUTE_ACTIVE, true)
+            .putFloat(PREF_NAVIGATION_PROGRESS_METERS, 0f)
             .apply()
         approachOffRouteFixCount = 0
         isApproachRecalculationInProgress = false
@@ -946,6 +953,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
             .edit()
             .putBoolean(PREF_NAVIGATION_ACTIVE, false)
             .putBoolean(PREF_NAVIGATION_MAIN_ROUTE_ACTIVE, false)
+            .putFloat(PREF_NAVIGATION_PROGRESS_METERS, 0f)
             .remove(PREF_NAVIGATION_ROUTE_PATH)
             .apply()
         NavigationLocationService.stop(this)
@@ -2408,6 +2416,11 @@ class MainActivity : AppCompatActivity(), LocationListener {
 
         isNavigationActive = true
         binding.startNavigationButton.text = "STOP"
+
+        val authoritativeProgress = NavigationLocationService.lastNavigationFix?.progressMeters
+            ?: preferences.getFloat(PREF_NAVIGATION_PROGRESS_METERS, 0f).toDouble()
+        currentRouteProgressMeters = authoritativeProgress
+        updateDistancePanels()
 
         if (!NavigationLocationService.isRunning) {
             if (android.os.Build.VERSION.SDK_INT >= 33 &&
@@ -4480,6 +4493,14 @@ class MainActivity : AppCompatActivity(), LocationListener {
         ImportService.setListener(::handleImportResult)
         ImportService.consumePendingResult(this)?.let(::handleImportResult)
         NavigationLocationService.lastLocation?.let { lastLocation = it }
+        NavigationLocationService.lastNavigationFix?.let { fix ->
+            if (isNavigationActive && !isApproachingStart) {
+                currentRouteProgressMeters = fix.progressMeters
+                updateDistancePanels()
+                updateOffRouteWarning(fix)
+                updateRouteAlertPanel()
+            }
+        }
         binding.mapView.onStart()
     }
 
@@ -4593,6 +4614,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
         private const val PREFS_NAVIGATION = "navigation_settings"
         private const val PREF_NAVIGATION_ACTIVE = "navigation_active"
         private const val PREF_NAVIGATION_ROUTE_PATH = "navigation_route_path"
+        private const val PREF_NAVIGATION_PROGRESS_METERS = "navigation_progress_meters"
         private const val PREF_NAVIGATION_MAIN_ROUTE_ACTIVE = "navigation_main_route_active"
         private const val DEFAULT_ALERT_DISTANCE = 1000
         private val ALERT_DISTANCE_OPTIONS = intArrayOf(250, 500, 1000, 1500, 2000, 3000)

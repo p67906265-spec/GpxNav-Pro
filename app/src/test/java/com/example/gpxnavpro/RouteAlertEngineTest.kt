@@ -55,6 +55,45 @@ class RouteAlertEngineTest {
         assertTrue(passed == null || passed.alert.type == RouteAlertType.FINISH)
     }
 
+
+    @Test
+    fun repeatedLaps_createAlertForEveryWaypointPassage() {
+        val oneLapPoints = listOf(
+            GpxPoint(46.0000, 13.0000),
+            GpxPoint(46.0000, 13.0100),
+            GpxPoint(46.0100, 13.0100),
+            GpxPoint(46.0100, 13.0000),
+            GpxPoint(46.0000, 13.0000)
+        )
+        val repeatedPoints = GpxTrackEditor.repeat(oneLapPoints, 6)
+        val distance = repeatedPoints.zipWithNext().sumOf { (a, b) ->
+            GeoMath.haversineMeters(a, b)
+        }
+        val route = GpxRoute(
+            name = "6 giri",
+            points = repeatedPoints,
+            distanceMeters = distance,
+            waypoints = listOf(
+                GpxWaypoint(
+                    latitude = 46.0000,
+                    longitude = 13.0050,
+                    name = "TV"
+                )
+            )
+        )
+
+        val engine = RouteAlertEngine()
+        engine.setRoute(route)
+
+        val tvAlerts = engine.routeAlerts()
+            .filter { it.type == RouteAlertType.TV }
+
+        assertEquals(6, tvAlerts.size)
+        assertTrue(tvAlerts.zipWithNext().all { (a, b) ->
+            b.progressMeters > a.progressMeters + 100.0
+        })
+    }
+
     private fun straightRoute(): GpxRoute {
         val points = listOf(
             GpxPoint(46.0000, 13.0000),

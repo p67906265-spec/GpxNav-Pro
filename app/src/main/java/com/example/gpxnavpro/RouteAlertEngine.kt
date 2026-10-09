@@ -38,13 +38,20 @@ class RouteAlertEngine {
         route: GpxRoute,
         manualKilometers: Map<RouteAlertType, List<Double>> = emptyMap()
     ) {
-        val detected = route.waypoints.mapNotNull { waypoint ->
-            val type = detectType(waypoint) ?: return@mapNotNull null
-            RouteAlert(
-                type = type,
-                name = waypoint.name,
-                progressMeters = projectOnRoute(route, waypoint.latitude, waypoint.longitude)
-            )
+        val detected = route.waypoints.flatMap { waypoint ->
+            val type = detectType(waypoint) ?: return@flatMap emptyList()
+            projectAllPassages(
+                route = route,
+                latitude = waypoint.latitude,
+                longitude = waypoint.longitude,
+                maximumDistanceMeters = WAYPOINT_PASSAGE_RADIUS_METERS
+            ).mapIndexed { index, progress ->
+                RouteAlert(
+                    type = type,
+                    name = if (index == 0) waypoint.name else "${waypoint.name} ${index + 1}",
+                    progressMeters = progress
+                )
+            }
         }.toMutableList()
 
         manualKilometers.forEach { (type, kilometers) ->
@@ -122,17 +129,18 @@ class RouteAlertEngine {
         Normalizer.normalize(value.lowercase(), Normalizer.Form.NFD)
             .replace(Regex("\\p{Mn}+"), "")
 
-    private fun projectOnRoute(
+    private fun projectAllPassages(
         route: GpxRoute,
         latitude: Double,
-        longitude: Double
-    ): Double {
-        if (route.points.size < 2) return 0.0
+        longitude: Double,
+        maximumDistanceMeters: Double
+    ): List<Double> {
+        if (route.points.size < 2) return emptyList()
+
         val earthRadius = 6_371_000.0
         val latitudeRadians = Math.toRadians(latitude)
         var cumulative = 0.0
-        var bestDistance = Double.MAX_VALUE
-        var bestProgress = 0.0
+        val candidates = mutableListOf<Pair<Double, Double>>()
 
         for (index in 0 until route.points.lastIndex) {
             val start = route.points[index]
@@ -147,22 +155,44 @@ class RouteAlertEngine {
             val vectorY = endY - startY
             val lengthSquared = vectorX * vectorX + vectorY * vectorY
             val fraction = if (lengthSquared > 0.0) {
-                (-(startX * vectorX + startY * vectorY) / lengthSquared).coerceIn(0.0, 1.0)
+                (-(startX * vectorX + startY * vectorY) / lengthSquared)
+                    .coerceIn(0.0, 1.0)
             } else {
                 0.0
             }
+
             val distanceToRoute = hypot(
                 startX + fraction * vectorX,
                 startY + fraction * vectorY
             )
             val segmentLength = distance(start, end)
-            if (distanceToRoute < bestDistance) {
-                bestDistance = distanceToRoute
-                bestProgress = cumulative + fraction * segmentLength
+            val progress = cumulative + fraction * segmentLength
+
+            if (distanceToRoute <= maximumDistanceMeters) {
+                candidates += progress to distanceToRoute
             }
             cumulative += segmentLength
         }
-        return bestProgress.coerceIn(0.0, route.distanceMeters)
+
+        if (candidates.isEmpty()) return emptyList()
+
+        // Segmenti consecutivi attorno allo stesso passaggio possono produrre
+        // più candidati. Li raggruppiamo per distanza lungo la traccia,
+        // mantenendo il punto geometricamente più vicino al waypoint.
+        val sorted = candidates.sortedBy { it.first }
+        val passages = mutableListOf<Pair<Double, Double>>()
+        for (candidate in sorted) {
+            val previous = passages.lastOrNull()
+            if (previous == null ||
+                candidate.first - previous.first > PASSAGE_DEDUP_PROGRESS_METERS
+            ) {
+                passages += candidate
+            } else if (candidate.second < previous.second) {
+                passages[passages.lastIndex] = candidate
+            }
+        }
+
+        return passages.map { it.first.coerceIn(0.0, route.distanceMeters) }
     }
 
     private fun distance(start: GpxPoint, end: GpxPoint): Double =
@@ -178,6 +208,8 @@ class RouteAlertEngine {
     }
 
     companion object {
+        private const val WAYPOINT_PASSAGE_RADIUS_METERS = 30.0
+        private const val PASSAGE_DEDUP_PROGRESS_METERS = 60.0
         private const val PASSED_EVENT_TOLERANCE_METERS = 30.0
     }
 }
