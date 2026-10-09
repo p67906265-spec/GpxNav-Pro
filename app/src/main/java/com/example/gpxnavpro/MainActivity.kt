@@ -253,6 +253,34 @@ class MainActivity : AppCompatActivity(), LocationListener {
         binding.menuButton.setOnClickListener { openDrawer() }
         binding.drawerScrim.setOnClickListener { closeDrawer() }
         binding.closeDrawerButton.setOnClickListener { closeDrawer() }
+        binding.trackSectionHeader.setOnClickListener {
+            toggleDrawerSection(
+                binding.trackSectionHeader,
+                binding.trackSectionContent,
+                R.drawable.ic_route
+            )
+        }
+        binding.raceSectionHeader.setOnClickListener {
+            toggleDrawerSection(
+                binding.raceSectionHeader,
+                binding.raceSectionContent,
+                R.drawable.ic_alert
+            )
+        }
+        binding.routesSectionHeader.setOnClickListener {
+            toggleDrawerSection(
+                binding.routesSectionHeader,
+                binding.routesSectionContent,
+                R.drawable.ic_route_profile
+            )
+        }
+        binding.settingsSectionHeader.setOnClickListener {
+            toggleDrawerSection(
+                binding.settingsSectionHeader,
+                binding.settingsSectionContent,
+                R.drawable.ic_settings
+            )
+        }
         binding.importGpxDrawerButton.setOnClickListener {
             closeDrawer()
             gpxPicker.launch(arrayOf("application/gpx+xml", "application/xml", "text/xml", "*/*"))
@@ -1249,6 +1277,17 @@ class MainActivity : AppCompatActivity(), LocationListener {
         "trekking" -> "Trekking"
         "fastbike" -> "Bici veloce"
         else -> "Moto / auto rapido"
+    }
+
+    private fun toggleDrawerSection(header: TextView, content: View, startIconRes: Int) {
+        val opening = content.visibility != View.VISIBLE
+        content.visibility = if (opening) View.VISIBLE else View.GONE
+        header.setCompoundDrawablesRelativeWithIntrinsicBounds(
+            startIconRes,
+            0,
+            if (opening) R.drawable.ic_expand_less else R.drawable.ic_expand_more,
+            0
+        )
     }
 
     private fun openDrawer() {

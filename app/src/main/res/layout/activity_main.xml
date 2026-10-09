@@ -414,262 +414,348 @@
         android:background="#062C58"
         android:elevation="18dp"
         android:orientation="vertical"
-        android:paddingStart="16dp"
-        android:paddingTop="18dp"
-        android:paddingEnd="16dp"
-        android:paddingBottom="14dp"
         android:translationX="-320dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-        <TextView
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="GPX NAV PRO"
-            android:textColor="#FFFFFF"
-            android:textSize="25sp"
-            android:textStyle="bold" />
+            android:orientation="vertical"
+            android:paddingStart="16dp"
+            android:paddingTop="18dp"
+            android:paddingEnd="16dp">
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:layout_marginBottom="10dp"
-            android:text="Navigazione GPX offline / online"
-            android:textColor="#A9D2FF"
-            android:textSize="12sp" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="GPX NAV PRO"
+                android:textColor="#FFFFFF"
+                android:textSize="25sp"
+                android:textStyle="bold" />
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginBottom="14dp"
-            android:background="#1F5FA8" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:layout_marginBottom="10dp"
+                android:text="Navigazione GPX offline / online"
+                android:textColor="#A9D2FF"
+                android:textSize="12sp" />
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            android:text="NAVIGAZIONE"
-            android:textColor="#9FCBFF"
-            android:textSize="12sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/importGpxDrawerButton"
-            android:layout_width="match_parent"
-            android:layout_height="54dp"
-            android:layout_marginBottom="10dp"
-            android:background="@drawable/bg_drawer_action"
-            android:drawableStart="@drawable/ic_import"
-            android:drawableEnd="@drawable/ic_chevron_right"
-            android:drawablePadding="16dp"
-            android:gravity="center_vertical"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="Importa GPX"
-            android:textColor="#FFFFFF"
-            android:textSize="16sp" />
-
-        <TextView
-            android:id="@+id/createGpxDrawerButton"
-            android:layout_width="match_parent"
-            android:layout_height="54dp"
-            android:layout_marginBottom="10dp"
-            android:background="@drawable/bg_drawer_action"
-            android:drawableStart="@drawable/ic_edit_add_route"
-            android:drawableEnd="@drawable/ic_chevron_right"
-            android:drawablePadding="16dp"
-            android:gravity="center_vertical"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="Crea traccia GPX"
-            android:textColor="#FFFFFF"
-            android:textSize="16sp" />
-
-        <TextView
-            android:id="@+id/alertsDrawerButton"
-            android:layout_width="match_parent"
-            android:layout_height="54dp"
-            android:layout_marginBottom="10dp"
-            android:background="@drawable/bg_drawer_action"
-            android:drawableStart="@drawable/ic_alert"
-            android:drawableEnd="@drawable/ic_chevron_right"
-            android:drawablePadding="16dp"
-            android:gravity="center_vertical"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="Distanze preavviso"
-            android:textColor="#FFFFFF"
-            android:textSize="16sp" />
-
-        <TextView
-            android:id="@+id/alertKilometersDrawerButton"
-            android:layout_width="match_parent"
-            android:layout_height="54dp"
-            android:layout_marginBottom="10dp"
-            android:background="@drawable/bg_drawer_action"
-            android:drawableStart="@drawable/ic_pin"
-            android:drawableEnd="@drawable/ic_chevron_right"
-            android:drawablePadding="16dp"
-            android:gravity="center_vertical"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="Km avvisi"
-            android:textColor="#FFFFFF"
-            android:textSize="16sp" />
-
-        <TextView
-            android:id="@+id/appearanceDrawerButton"
-            android:layout_width="match_parent"
-            android:layout_height="54dp"
-            android:layout_marginBottom="10dp"
-            android:background="@drawable/bg_drawer_action"
-            android:drawableStart="@drawable/ic_palette"
-            android:drawableEnd="@drawable/ic_chevron_right"
-            android:drawablePadding="16dp"
-            android:gravity="center_vertical"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="Aspetto traccia"
-            android:textColor="#FFFFFF"
-            android:textSize="16sp" />
-
-        <TextView
-            android:id="@+id/editGpxDrawerButton"
-            android:layout_width="match_parent"
-            android:layout_height="54dp"
-            android:layout_marginBottom="10dp"
-            android:background="@drawable/bg_drawer_action"
-            android:drawableStart="@drawable/ic_pin"
-            android:drawableEnd="@drawable/ic_chevron_right"
-            android:drawablePadding="16dp"
-            android:gravity="center_vertical"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="Modifica traccia GPX"
-            android:textColor="#FFFFFF"
-            android:textSize="16sp" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:layout_marginBottom="8dp"
-            android:text="IMPOSTAZIONI RAPIDE"
-            android:textColor="#9FCBFF"
-            android:textSize="12sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/offlineMapDrawerButton"
-            android:layout_width="match_parent"
-            android:layout_height="54dp"
-            android:layout_marginBottom="10dp"
-            android:background="@drawable/bg_drawer_action"
-            android:drawableStart="@drawable/ic_map"
-            android:drawableEnd="@drawable/ic_chevron_right"
-            android:drawablePadding="16dp"
-            android:gravity="center_vertical"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="Mappe online / offline"
-            android:textColor="#FFFFFF"
-            android:textSize="16sp" />
-
-        <TextView
-            android:id="@+id/keepScreenOnDrawerButton"
-            android:layout_width="match_parent"
-            android:layout_height="54dp"
-            android:layout_marginBottom="10dp"
-            android:background="@drawable/bg_drawer_action"
-            android:drawableStart="@drawable/ic_screen_on"
-            android:drawablePadding="16dp"
-            android:gravity="center_vertical"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="Schermo acceso in navigazione: Sì"
-            android:textColor="#FFFFFF"
-            android:textSize="16sp" />
-
-        <TextView
-            android:id="@+id/brouterProfileDrawerButton"
-            android:layout_width="match_parent"
-            android:layout_height="54dp"
-            android:layout_marginBottom="10dp"
-            android:background="@drawable/bg_drawer_action"
-            android:drawableStart="@drawable/ic_route_profile"
-            android:drawableEnd="@drawable/ic_chevron_right"
-            android:drawablePadding="16dp"
-            android:gravity="center_vertical"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="Profilo BRouter: Moto / auto rapido"
-            android:textColor="#FFFFFF"
-            android:textSize="15sp" />
-
-        <TextView
-            android:id="@+id/guideDrawerButton"
-            android:layout_width="match_parent"
-            android:layout_height="54dp"
-            android:layout_marginBottom="12dp"
-            android:background="@drawable/bg_drawer_action"
-            android:drawableStart="@drawable/ic_help"
-            android:drawableEnd="@drawable/ic_chevron_right"
-            android:drawablePadding="16dp"
-            android:gravity="center_vertical"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="Guida comandi"
-            android:textColor="#FFFFFF"
-            android:textSize="16sp" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="PERCORSI"
-            android:textColor="#9FCBFF"
-            android:textSize="12sp"
-            android:textStyle="bold" />
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginBottom="10dp"
+                android:background="#1F5FA8" />
+        </LinearLayout>
 
         <ScrollView
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_marginTop="8dp"
             android:layout_weight="1"
+            android:fillViewport="true"
             android:overScrollMode="never">
 
             <LinearLayout
-                android:id="@+id/drawerRouteList"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical" />
+                android:orientation="vertical"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="20dp">
+
+                <TextView
+                    android:id="@+id/trackSectionHeader"
+                    android:layout_width="match_parent"
+                    android:layout_height="54dp"
+                    android:layout_marginBottom="8dp"
+                    android:background="@drawable/bg_drawer_section"
+                    android:drawableStart="@drawable/ic_route"
+                    android:drawableEnd="@drawable/ic_expand_less"
+                    android:drawablePadding="14dp"
+                    android:gravity="center_vertical"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="14dp"
+                    android:text="TRACCIA GPX"
+                    android:textColor="#A9D2FF"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:id="@+id/trackSectionContent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/importGpxDrawerButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="54dp"
+                        android:layout_marginBottom="8dp"
+                        android:background="@drawable/bg_drawer_action"
+                        android:drawableStart="@drawable/ic_import"
+                        android:drawableEnd="@drawable/ic_chevron_right"
+                        android:drawablePadding="16dp"
+                        android:gravity="center_vertical"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:text="Carica GPX"
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp" />
+
+                    <TextView
+                        android:id="@+id/editGpxDrawerButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="54dp"
+                        android:layout_marginBottom="8dp"
+                        android:background="@drawable/bg_drawer_action"
+                        android:drawableStart="@drawable/ic_edit_add_route"
+                        android:drawableEnd="@drawable/ic_chevron_right"
+                        android:drawablePadding="16dp"
+                        android:gravity="center_vertical"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:text="Modifica GPX"
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp" />
+
+                    <TextView
+                        android:id="@+id/createGpxDrawerButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="54dp"
+                        android:layout_marginBottom="14dp"
+                        android:background="@drawable/bg_drawer_action"
+                        android:drawableStart="@drawable/ic_add"
+                        android:drawableEnd="@drawable/ic_chevron_right"
+                        android:drawablePadding="16dp"
+                        android:gravity="center_vertical"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:text="Crea GPX"
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/raceSectionHeader"
+                    android:layout_width="match_parent"
+                    android:layout_height="54dp"
+                    android:layout_marginBottom="8dp"
+                    android:background="@drawable/bg_drawer_section"
+                    android:drawableStart="@drawable/ic_alert"
+                    android:drawableEnd="@drawable/ic_expand_more"
+                    android:drawablePadding="14dp"
+                    android:gravity="center_vertical"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="14dp"
+                    android:text="GARA"
+                    android:textColor="#8FE0A5"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:id="@+id/raceSectionContent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:id="@+id/alertsDrawerButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="54dp"
+                        android:layout_marginBottom="8dp"
+                        android:background="@drawable/bg_drawer_action"
+                        android:drawableStart="@drawable/ic_alert"
+                        android:drawableEnd="@drawable/ic_chevron_right"
+                        android:drawablePadding="16dp"
+                        android:gravity="center_vertical"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:text="Distanza preavviso"
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp" />
+
+                    <TextView
+                        android:id="@+id/alertKilometersDrawerButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="54dp"
+                        android:layout_marginBottom="8dp"
+                        android:background="@drawable/bg_drawer_action"
+                        android:drawableStart="@drawable/ic_pin"
+                        android:drawableEnd="@drawable/ic_chevron_right"
+                        android:drawablePadding="16dp"
+                        android:gravity="center_vertical"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:text="Km avvisi"
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp" />
+
+                    <TextView
+                        android:id="@+id/appearanceDrawerButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="54dp"
+                        android:layout_marginBottom="14dp"
+                        android:background="@drawable/bg_drawer_action"
+                        android:drawableStart="@drawable/ic_palette"
+                        android:drawableEnd="@drawable/ic_chevron_right"
+                        android:drawablePadding="16dp"
+                        android:gravity="center_vertical"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:text="Aspetto traccia"
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/routesSectionHeader"
+                    android:layout_width="match_parent"
+                    android:layout_height="54dp"
+                    android:layout_marginBottom="8dp"
+                    android:background="@drawable/bg_drawer_section"
+                    android:drawableStart="@drawable/ic_route_profile"
+                    android:drawableEnd="@drawable/ic_expand_less"
+                    android:drawablePadding="14dp"
+                    android:gravity="center_vertical"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="14dp"
+                    android:text="PERCORSI"
+                    android:textColor="#FFD067"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:id="@+id/routesSectionContent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:id="@+id/drawerRouteList"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="14dp"
+                        android:orientation="vertical" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/settingsSectionHeader"
+                    android:layout_width="match_parent"
+                    android:layout_height="54dp"
+                    android:layout_marginBottom="8dp"
+                    android:background="@drawable/bg_drawer_section"
+                    android:drawableStart="@drawable/ic_settings"
+                    android:drawableEnd="@drawable/ic_expand_more"
+                    android:drawablePadding="14dp"
+                    android:gravity="center_vertical"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="14dp"
+                    android:text="IMPOSTAZIONI"
+                    android:textColor="#C8B3FF"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:id="@+id/settingsSectionContent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:id="@+id/offlineMapDrawerButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="54dp"
+                        android:layout_marginBottom="8dp"
+                        android:background="@drawable/bg_drawer_action"
+                        android:drawableStart="@drawable/ic_map"
+                        android:drawableEnd="@drawable/ic_chevron_right"
+                        android:drawablePadding="16dp"
+                        android:gravity="center_vertical"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:text="Mappe online / offline"
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp" />
+
+                    <TextView
+                        android:id="@+id/keepScreenOnDrawerButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="54dp"
+                        android:layout_marginBottom="8dp"
+                        android:background="@drawable/bg_drawer_action"
+                        android:drawableStart="@drawable/ic_screen_on"
+                        android:drawablePadding="16dp"
+                        android:gravity="center_vertical"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:text="Schermo acceso in navigazione: Sì"
+                        android:textColor="#FFFFFF"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:id="@+id/brouterProfileDrawerButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="54dp"
+                        android:layout_marginBottom="8dp"
+                        android:background="@drawable/bg_drawer_action"
+                        android:drawableStart="@drawable/ic_route_profile"
+                        android:drawableEnd="@drawable/ic_chevron_right"
+                        android:drawablePadding="16dp"
+                        android:gravity="center_vertical"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:text="Profilo BRouter: Moto / auto rapido"
+                        android:textColor="#FFFFFF"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:id="@+id/guideDrawerButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="54dp"
+                        android:layout_marginBottom="14dp"
+                        android:background="@drawable/bg_drawer_action"
+                        android:drawableStart="@drawable/ic_help"
+                        android:drawableEnd="@drawable/ic_chevron_right"
+                        android:drawablePadding="16dp"
+                        android:gravity="center_vertical"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:text="Guida comandi"
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:gravity="center"
+                    android:text="Paolo Free 1.0  •  v1.19"
+                    android:textColor="#9FCBFF"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/closeDrawerButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:layout_marginTop="10dp"
+                    android:layout_marginBottom="24dp"
+                    android:background="@drawable/bg_drawer_close"
+                    android:drawableStart="@drawable/ic_close"
+                    android:drawablePadding="16dp"
+                    android:gravity="center_vertical"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="14dp"
+                    android:text="Chiudi"
+                    android:textColor="#D9ECFF"
+                    android:textSize="16sp" />
+            </LinearLayout>
         </ScrollView>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:gravity="center"
-            android:text="Paolo Free 1.0  •  v1.18"
-            android:textColor="#9FCBFF"
-            android:textSize="12sp" />
-
-        <TextView
-            android:id="@+id/closeDrawerButton"
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="34dp"
-            android:background="@drawable/bg_drawer_close"
-            android:drawableStart="@drawable/ic_close"
-            android:drawablePadding="16dp"
-            android:gravity="center_vertical"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:text="Chiudi"
-            android:textColor="#D9ECFF"
-            android:textSize="16sp" />
     </LinearLayout>
 
     <LinearLayout

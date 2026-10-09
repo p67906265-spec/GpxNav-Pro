@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.19
+- Nuovo pannello sinistro organizzato in quattro tendine apri/chiudi.
+- Traccia GPX: Carica GPX, Modifica GPX, Crea GPX.
+- Gara: Distanza preavviso, Km avvisi, Aspetto traccia.
+- Percorsi: elenco reale delle tracce salvate con Apri, Info, Simula, Modifica ed Elimina.
+- Impostazioni: Mappe online/offline, schermo acceso in navigazione, profilo BRouter, guida comandi.
+- Traccia GPX e Percorsi aperti di default; Gara e Impostazioni chiusi.
+- Mantenute le correzioni v1.18.1 su stop notifica, landscape e schermo acceso solo in navigazione.
+
+## 1.18.1
+- Ripristinata la lista delle tracce selezionabili nel pannello sinistro.
+- La sezione Percorsi è ora subito sotto Importa/Crea GPX per essere sempre facilmente raggiungibile.
+- L'intero contenuto del drawer è scorrevole: nessuna voce viene più schiacciata su schermi bassi o in landscape.
+- Restano disponibili sulle tracce le azioni Apri, Info, Simula giro, Modifica ed Elimina.
+- Mantenuto il nuovo stile grafico a card.
+
 ## 1.18
 - Stop dalla notifica sincronizzato subito con l'Activity: UI torna su AVVIA e riparte il GPS locale.
 - Controllo aggiuntivo in onStart per recuperare correttamente uno stop avvenuto mentre l'app era in background.
