@@ -173,7 +173,7 @@ class BRouterClient(context: Context) {
                             "${request.longitudes[index]},${request.latitudes[index]}"
                         }
                     )
-                    putString("profile", "car-fast")
+                    putString("profile", selectedProfile())
                     putString("alternativeidx", "0")
                     putString("trackFormat", "gpx")
                     putString("turnInstructionFormat", "osmand")
@@ -190,6 +190,12 @@ class BRouterClient(context: Context) {
             complete(request, result)
         }
     }
+
+    private fun selectedProfile(): String =
+        appContext.getSharedPreferences(PREFS_ROUTING, Context.MODE_PRIVATE)
+            .getString(PREF_BROUTER_PROFILE, DEFAULT_BROUTER_PROFILE)
+            ?.takeIf { it in SUPPORTED_PROFILES }
+            ?: DEFAULT_BROUTER_PROFILE
 
     private fun scheduleTimeout(request: RoutingRequest) {
         val timeout = Runnable {
@@ -259,5 +265,9 @@ class BRouterClient(context: Context) {
         private const val BROUTER_PACKAGE = "btools.routingapp"
         private const val BROUTER_SERVICE = "btools.routingapp.BRouterService"
         private const val REQUEST_TIMEOUT_MS = 75_000L
+        const val PREFS_ROUTING = "routing_settings"
+        const val PREF_BROUTER_PROFILE = "brouter_profile"
+        const val DEFAULT_BROUTER_PROFILE = "car-fast"
+        val SUPPORTED_PROFILES = setOf("car-fast", "trekking", "fastbike")
     }
 }

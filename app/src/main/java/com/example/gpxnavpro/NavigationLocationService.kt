@@ -3,6 +3,7 @@ package com.example.gpxnavpro
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -40,14 +41,21 @@ class NavigationLocationService : Service(), LocationListener {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startForeground(
             NOTIFICATION_ID,
-            NotificationCompat.Builder(this, CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-                .setContentTitle("GPX NAV")
-                .setContentText("Navigazione GPS attiva")
-                .setOngoing(true)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
-                .build()
+            buildNavigationNotification()
         )
+
+        if (intent?.action == ACTION_STOP) {
+            getSharedPreferences(PREFS_NAVIGATION, Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean(PREF_NAVIGATION_ACTIVE, false)
+                .putBoolean(PREF_MAIN_ROUTE_ACTIVE, false)
+                .putFloat(PREF_NAVIGATION_PROGRESS_METERS, 0f)
+                .remove(PREF_NAVIGATION_ROUTE_PATH)
+                .apply()
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf(startId)
+            return START_NOT_STICKY
+        }
 
         loadNavigationState()
         if (activeRoute == null) {
@@ -230,6 +238,38 @@ class NavigationLocationService : Service(), LocationListener {
         }
     }
 
+    private fun buildNavigationNotification(): android.app.Notification {
+        val openAppIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val openAppPendingIntent = PendingIntent.getActivity(
+            this,
+            2101,
+            openAppIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val stopIntent = Intent(this, NavigationLocationService::class.java).apply {
+            action = ACTION_STOP
+        }
+        val stopPendingIntent = PendingIntent.getService(
+            this,
+            2102,
+            stopIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+            .setContentTitle("GPX NAV")
+            .setContentText("Navigazione GPS attiva")
+            .setContentIntent(openAppPendingIntent)
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Stop", stopPendingIntent)
+            .setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+    }
+
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = getSystemService(NotificationManager::class.java)
@@ -245,6 +285,7 @@ class NavigationLocationService : Service(), LocationListener {
     companion object {
         private const val CHANNEL_ID = "gpx_navigation"
         private const val NOTIFICATION_ID = 2101
+        private const val ACTION_STOP = "com.example.gpxnavpro.action.STOP_NAVIGATION"
 
         private const val PREFS_NAVIGATION = "navigation_settings"
         private const val PREF_NAVIGATION_ACTIVE = "navigation_active"

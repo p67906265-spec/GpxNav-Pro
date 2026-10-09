@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.16
+- Aggiunta opzione "Schermo sempre acceso" nel menu laterale.
+- Aggiunto profilo BRouter configurabile: car-fast, trekking, fastbike.
+- Notifica navigazione con tap per tornare all'app e azione "Stop".
+- Backup Android disabilitato per non salvare percorsi locali non trasferibili.
+- TurnInstructionEngine ora usa GeoMath/Haversine ed è testabile su JVM.
+- Rimossa dipendenza da Location.distanceBetween nel motore delle svolte.
+- Rimossa android.enableJetifier.
+- Sostituito kotlinOptions con compilerOptions.
+- Aggiornati core-ktx, appcompat e Material.
+- MapLibre spostato nel version catalog.
+- Workflow GitHub Actions esegue anche ./gradlew lint.
+- README aggiornato allo stato reale dell'app.
+- Orientamento landscape abilitato rimuovendo il blocco portrait.
+
 ## 1.15
 - Un secondo import non può più interrompere una copia PMTiles già in corso.
 - BRouterClient gestisce più richieste pendenti senza perdere callback.

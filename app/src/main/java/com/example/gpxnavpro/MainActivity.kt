@@ -240,6 +240,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
 
         locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
         bRouterClient = BRouterClient(this)
+        applyKeepScreenOnPreference()
         updateRecenterButtonColor()
 
         binding.recenterButton.setOnClickListener {
@@ -268,6 +269,13 @@ class MainActivity : AppCompatActivity(), LocationListener {
         binding.offlineMapDrawerButton.setOnClickListener {
             closeDrawer()
             showOfflineMapActions()
+        }
+        binding.keepScreenOnDrawerButton.setOnClickListener {
+            toggleKeepScreenOnPreference()
+        }
+        binding.brouterProfileDrawerButton.setOnClickListener {
+            closeDrawer()
+            showBRouterProfileDialog()
         }
         binding.guideDrawerButton.setOnClickListener {
             closeDrawer()
@@ -1144,8 +1152,88 @@ class MainActivity : AppCompatActivity(), LocationListener {
         }
     }
 
+    private fun applyKeepScreenOnPreference() {
+        val enabled = getSharedPreferences(PREFS_DISPLAY, Context.MODE_PRIVATE)
+            .getBoolean(PREF_KEEP_SCREEN_ON, false)
+        if (enabled) {
+            window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
+
+    private fun toggleKeepScreenOnPreference() {
+        val preferences = getSharedPreferences(PREFS_DISPLAY, Context.MODE_PRIVATE)
+        val enabled = !preferences.getBoolean(PREF_KEEP_SCREEN_ON, false)
+        preferences.edit().putBoolean(PREF_KEEP_SCREEN_ON, enabled).apply()
+        applyKeepScreenOnPreference()
+        updateDrawerPreferenceLabels()
+        Toast.makeText(
+            this,
+            if (enabled) "Schermo sempre acceso attivato" else "Schermo sempre acceso disattivato",
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+
+    private fun updateDrawerPreferenceLabels() {
+        val keepScreenOn = getSharedPreferences(PREFS_DISPLAY, Context.MODE_PRIVATE)
+            .getBoolean(PREF_KEEP_SCREEN_ON, false)
+        binding.keepScreenOnDrawerButton.text =
+            "Schermo sempre acceso: ${if (keepScreenOn) "Sì" else "No"}"
+
+        val profile = getSharedPreferences(BRouterClient.PREFS_ROUTING, Context.MODE_PRIVATE)
+            .getString(
+                BRouterClient.PREF_BROUTER_PROFILE,
+                BRouterClient.DEFAULT_BROUTER_PROFILE
+            )
+            ?: BRouterClient.DEFAULT_BROUTER_PROFILE
+        binding.brouterProfileDrawerButton.text =
+            "Profilo BRouter: ${bRouterProfileLabel(profile)}"
+    }
+
+    private fun showBRouterProfileDialog() {
+        val profiles = arrayOf("car-fast", "trekking", "fastbike")
+        val labels = arrayOf(
+            "Moto / auto rapido",
+            "Trekking",
+            "Bici veloce"
+        )
+        val preferences = getSharedPreferences(BRouterClient.PREFS_ROUTING, Context.MODE_PRIVATE)
+        val current = preferences.getString(
+            BRouterClient.PREF_BROUTER_PROFILE,
+            BRouterClient.DEFAULT_BROUTER_PROFILE
+        ) ?: BRouterClient.DEFAULT_BROUTER_PROFILE
+        val selected = profiles.indexOf(current).coerceAtLeast(0)
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Profilo BRouter")
+            .setSingleChoiceItems(labels, selected) { dialogInterface, which ->
+                preferences.edit()
+                    .putString(BRouterClient.PREF_BROUTER_PROFILE, profiles[which])
+                    .apply()
+                dialogInterface.dismiss()
+                updateDrawerPreferenceLabels()
+                Toast.makeText(
+                    this,
+                    "Profilo: ${labels[which]}",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+            .setNegativeButton("Annulla", null)
+            .create()
+        dialog.setOnShowListener { styleBlueDialog(dialog) }
+        dialog.show()
+    }
+
+    private fun bRouterProfileLabel(profile: String): String = when (profile) {
+        "trekking" -> "Trekking"
+        "fastbike" -> "Bici veloce"
+        else -> "Moto / auto rapido"
+    }
+
     private fun openDrawer() {
         populateDrawerRoutes()
+        updateDrawerPreferenceLabels()
         binding.drawerScrim.visibility = View.VISIBLE
         binding.drawerPanel.animate().translationX(0f).setDuration(220L).start()
     }
@@ -4538,6 +4626,8 @@ class MainActivity : AppCompatActivity(), LocationListener {
         private const val STATE_INCOMING_GPX_HANDLED = "incoming_gpx_handled"
         private const val MAP_SOURCE_ID = "offline-map-source"
         private const val ONLINE_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
+        private const val PREFS_DISPLAY = "display_settings"
+        private const val PREF_KEEP_SCREEN_ON = "keep_screen_on"
         private const val PREFS_MAP = "map_settings"
         private const val PREF_MAP_MODE = "map_mode"
         private const val MAP_MODE_ONLINE = "online"

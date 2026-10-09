@@ -1,23 +1,32 @@
-GPX NAV PRO - MAPLIBRE + PMTILES VETTORIALE OFFLINE
+GPX NAV PRO
 
-Questa versione importa e visualizza una mappa vettoriale PMTiles locale.
+Navigatore Android per tracce GPX con MapLibre, mappe online e PMTiles offline.
 
-PROVA:
-1. Apri il progetto con Android Studio.
-2. Esegui l'app sul telefono o emulatore.
-3. Premi "Importa mappa PMTiles".
-4. Seleziona il file friuli.pmtiles.
-5. Attendi la copia completa (circa 221 MB).
-6. La mappa viene centrata automaticamente sul Friuli-Venezia Giulia.
+FUNZIONI PRINCIPALI
+- Apertura e importazione GPX.
+- Navigazione con progresso, distanza da partenza/arrivo e avvisi.
+- Simulazione giro con pallino centrato e zoom libero.
+- Modifica GPX: taglio, inversione, spostamento punti, unione tracce e ripetizione giri.
+- Avvisi TV, GPM, Pericolo, ristoro e altri waypoint.
+- Navigazione in foreground service per continuare durante cambio app/chiamate.
+- Avvicinamento alla partenza con BRouter.
+- Profilo BRouter configurabile: car-fast, trekking, fastbike.
+- Mappe online oppure una mappa PMTiles offline selezionata.
+- Opzione per mantenere lo schermo acceso mentre l'app è visibile.
 
-Il file viene copiato nella cartella privata dell'app:
-Android/data/com.example.gpxnavpro/files/maps/friuli.pmtiles
+MAPPA OFFLINE
+La mappa PMTiles viene copiata nello spazio privato dell'app.
+La versione attuale visualizza la cartografia vettoriale offline senza etichette
+testuali, perché i glyph/font PBF non sono ancora inclusi nel pacchetto offline.
 
-La mappa usa dati OpenStreetMap contenuti nel PMTiles Protomaps.
-Questa prima versione vettoriale mostra territorio, uso del suolo, acqua,
-edifici, confini, strade e ferrovie senza collegamento internet.
+NOTA MAPPE MULTIPLE
+La gestione di più mappe PMTiles contemporaneamente è prevista per la prossima
+revisione strutturale. La versione corrente mantiene una sola mappa offline attiva.
 
-NOTA:
-Le etichette dei luoghi saranno aggiunte in una fase successiva insieme
-alle risorse font offline. La priorità di questa versione è verificare
-il caricamento corretto e completamente offline della mappa vettoriale.
+BACKUP
+Il backup Android dell'app è disabilitato per evitare di salvare preferenze con
+percorsi locali non validi su un altro dispositivo.
+
+BUILD
+GitHub Actions esegue test JVM e lint prima della build release firmata.
+La versione e il nome dell'APK vengono letti direttamente dal Gradle.

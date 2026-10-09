@@ -1,9 +1,6 @@
 package com.example.gpxnavpro
 
 import kotlin.math.abs
-import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.sin
 
 data class TurnInstruction(
     val progressMeters: Double,
@@ -25,7 +22,10 @@ class TurnInstructionEngine {
             val current = route.points[index]
             val next = route.points[index + 1]
             cumulative += distance(previous, current)
-            val delta = normalizedAngle(bearing(previous, current), bearing(current, next))
+            val delta = normalizedAngle(
+                GeoMath.bearingDegrees(previous, current),
+                GeoMath.bearingDegrees(current, next)
+            )
 
             if (abs(delta) >= MIN_TURN_ANGLE_DEGREES &&
                 cumulative - lastInstructionProgress >= MIN_INSTRUCTION_SPACING_METERS
@@ -49,27 +49,8 @@ class TurnInstructionEngine {
     private fun normalizedAngle(from: Double, to: Double): Double =
         ((to - from + 540.0) % 360.0) - 180.0
 
-    private fun bearing(start: GpxPoint, end: GpxPoint): Double {
-        val startLatitude = Math.toRadians(start.latitude)
-        val endLatitude = Math.toRadians(end.latitude)
-        val longitudeDelta = Math.toRadians(end.longitude - start.longitude)
-        val y = sin(longitudeDelta) * cos(endLatitude)
-        val x = cos(startLatitude) * sin(endLatitude) -
-            sin(startLatitude) * cos(endLatitude) * cos(longitudeDelta)
-        return (Math.toDegrees(atan2(y, x)) + 360.0) % 360.0
-    }
-
-    private fun distance(start: GpxPoint, end: GpxPoint): Double {
-        val result = FloatArray(1)
-        android.location.Location.distanceBetween(
-            start.latitude,
-            start.longitude,
-            end.latitude,
-            end.longitude,
-            result
-        )
-        return result[0].toDouble()
-    }
+    private fun distance(start: GpxPoint, end: GpxPoint): Double =
+        GeoMath.haversineMeters(start, end)
 
     companion object {
         private const val MIN_TURN_ANGLE_DEGREES = 35.0

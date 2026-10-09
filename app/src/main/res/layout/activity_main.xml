@@ -535,6 +535,35 @@
             android:textSize="16sp" />
 
         <TextView
+            android:id="@+id/keepScreenOnDrawerButton"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:background="?attr/selectableItemBackground"
+            android:drawableStart="@drawable/ic_screen_on"
+            android:drawablePadding="16dp"
+            android:gravity="center_vertical"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:text="Schermo sempre acceso: No"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/brouterProfileDrawerButton"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:background="?attr/selectableItemBackground"
+            android:drawableStart="@drawable/ic_route_profile"
+            android:drawableEnd="@drawable/ic_chevron_right"
+            android:drawablePadding="16dp"
+            android:gravity="center_vertical"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:text="Profilo BRouter: Moto / auto rapido"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp" />
+
+        <TextView
             android:id="@+id/guideDrawerButton"
             android:layout_width="match_parent"
             android:layout_height="52dp"
@@ -577,7 +606,7 @@
             android:layout_marginTop="8dp"
             android:layout_marginBottom="6dp"
             android:gravity="center"
-            android:text="Paolo Free 1.0  •  v1.15"
+            android:text="Paolo Free 1.0  •  v1.16"
             android:textColor="#9FCBFF"
             android:textSize="12sp" />
 

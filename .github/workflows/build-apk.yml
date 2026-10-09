@@ -29,10 +29,10 @@ jobs:
           echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
           echo "APK_NAME=GpxNav-Pro-v${VERSION_NAME}-release-firmato.apk" >> "$GITHUB_ENV"
 
-      - name: Esegui test JVM
+      - name: Esegui test JVM e lint
         run: |
           chmod +x gradlew
-          ./gradlew testDebugUnitTest
+          ./gradlew testDebugUnitTest lint
 
       - name: Prepara la firma permanente
         env:

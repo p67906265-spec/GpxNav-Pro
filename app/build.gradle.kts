@@ -12,8 +12,8 @@ android {
         minSdk = 24
         targetSdk = 36
 
-        versionCode = 15
-        versionName = "1.15"
+        versionCode = 16
+        versionName = "1.16"
 
         ndk {
             abiFilters += listOf("arm64-v8a")
@@ -69,8 +69,11 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 
@@ -81,7 +84,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.material)
 
-    implementation("org.maplibre.gl:android-sdk:13.2.0")
+    implementation(libs.maplibre)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.espresso.core)
