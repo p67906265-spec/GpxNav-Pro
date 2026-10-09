@@ -196,13 +196,12 @@ class MainActivity : AppCompatActivity(), LocationListener {
         } else {
             pendingNavigationStartAfterNotificationPermission = false
             if (isNavigationActive && !NavigationLocationService.isRunning) {
-                isNavigationActive = false
-                binding.startNavigationButton.text = "AVVIA"
                 getSharedPreferences(PREFS_NAVIGATION, Context.MODE_PRIVATE)
                     .edit()
                     .putBoolean(PREF_NAVIGATION_ACTIVE, false)
                     .putBoolean(PREF_NAVIGATION_MAIN_ROUTE_ACTIVE, false)
                     .apply()
+                resetNavigationUiAfterExternalStop()
             }
             Toast.makeText(
                 this,
@@ -767,6 +766,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
         navigationEngine.resetProgress()
         approachNavigationEngine.resetProgress()
         isNavigationActive = true
+        applyKeepScreenOnPreference()
         getSharedPreferences(PREFS_NAVIGATION, Context.MODE_PRIVATE)
             .edit()
             .putBoolean(PREF_NAVIGATION_ACTIVE, true)
@@ -817,6 +817,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
                 Toast.makeText(this, "Percorso verso la partenza calcolato", Toast.LENGTH_SHORT).show()
             }.onFailure { error ->
                 isNavigationActive = false
+                applyKeepScreenOnPreference()
                 isApproachingStart = false
                 getSharedPreferences(PREFS_NAVIGATION, Context.MODE_PRIVATE)
                     .edit()
@@ -958,6 +959,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
 
     private fun stopNavigation() {
         isNavigationActive = false
+        applyKeepScreenOnPreference()
         getSharedPreferences(PREFS_NAVIGATION, Context.MODE_PRIVATE)
             .edit()
             .putBoolean(PREF_NAVIGATION_ACTIVE, false)
@@ -979,6 +981,23 @@ class MainActivity : AppCompatActivity(), LocationListener {
         wasOffRoute = false
         startLocationUpdates()
         Toast.makeText(this, "Navigazione terminata", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun resetNavigationUiAfterExternalStop() {
+        isNavigationActive = false
+        isApproachingStart = false
+        activeApproachRoute = null
+        approachOffRouteFixCount = 0
+        isApproachRecalculationInProgress = false
+        binding.startNavigationButton.text = "AVVIA"
+        binding.startNavigationButton.isEnabled = true
+        binding.turnPanel.visibility = View.GONE
+        binding.offRoutePanel.visibility = View.GONE
+        binding.eventAlertPanel.visibility = View.GONE
+        mapLibreMap?.style?.let(::removeApproachRoute)
+        wasOffRoute = false
+        applyKeepScreenOnPreference()
+        startLocationUpdates()
     }
 
     private fun formatNavigationDistance(distanceMeters: Double): String =
@@ -1153,9 +1172,10 @@ class MainActivity : AppCompatActivity(), LocationListener {
     }
 
     private fun applyKeepScreenOnPreference() {
-        val enabled = getSharedPreferences(PREFS_DISPLAY, Context.MODE_PRIVATE)
-            .getBoolean(PREF_KEEP_SCREEN_ON, false)
-        if (enabled) {
+        val keepOnDuringNavigation = getSharedPreferences(PREFS_DISPLAY, Context.MODE_PRIVATE)
+            .getBoolean(PREF_KEEP_SCREEN_ON_NAVIGATION, true)
+        val shouldKeepScreenOn = keepOnDuringNavigation && isNavigationActive
+        if (shouldKeepScreenOn) {
             window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         } else {
             window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -1164,22 +1184,22 @@ class MainActivity : AppCompatActivity(), LocationListener {
 
     private fun toggleKeepScreenOnPreference() {
         val preferences = getSharedPreferences(PREFS_DISPLAY, Context.MODE_PRIVATE)
-        val enabled = !preferences.getBoolean(PREF_KEEP_SCREEN_ON, false)
-        preferences.edit().putBoolean(PREF_KEEP_SCREEN_ON, enabled).apply()
+        val enabled = !preferences.getBoolean(PREF_KEEP_SCREEN_ON_NAVIGATION, true)
+        preferences.edit().putBoolean(PREF_KEEP_SCREEN_ON_NAVIGATION, enabled).apply()
         applyKeepScreenOnPreference()
         updateDrawerPreferenceLabels()
         Toast.makeText(
             this,
-            if (enabled) "Schermo sempre acceso attivato" else "Schermo sempre acceso disattivato",
+            if (enabled) "Schermo acceso solo durante la navigazione" else "Schermo acceso automatico disattivato",
             Toast.LENGTH_SHORT
         ).show()
     }
 
     private fun updateDrawerPreferenceLabels() {
         val keepScreenOn = getSharedPreferences(PREFS_DISPLAY, Context.MODE_PRIVATE)
-            .getBoolean(PREF_KEEP_SCREEN_ON, false)
+            .getBoolean(PREF_KEEP_SCREEN_ON_NAVIGATION, true)
         binding.keepScreenOnDrawerButton.text =
-            "Schermo sempre acceso: ${if (keepScreenOn) "Sì" else "No"}"
+            "Schermo acceso in navigazione: ${if (keepScreenOn) "Sì" else "No"}"
 
         val profile = getSharedPreferences(BRouterClient.PREFS_ROUTING, Context.MODE_PRIVATE)
             .getString(
@@ -2509,6 +2529,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
         if (!shouldRestore) return
 
         isNavigationActive = true
+        applyKeepScreenOnPreference()
         binding.startNavigationButton.text = "STOP"
 
         val authoritativeProgress = NavigationLocationService.lastNavigationFix?.progressMeters
@@ -4564,6 +4585,19 @@ class MainActivity : AppCompatActivity(), LocationListener {
         NavigationLocationService.listener = { location ->
             if (!isFinishing && !isDestroyed) onLocationChanged(location)
         }
+        NavigationLocationService.navigationStoppedListener = {
+            if (!isFinishing && !isDestroyed) {
+                runOnUiThread { resetNavigationUiAfterExternalStop() }
+            }
+        }
+
+        val navigationPreferences = getSharedPreferences(PREFS_NAVIGATION, Context.MODE_PRIVATE)
+        val navigationPrefActive = navigationPreferences.getBoolean(PREF_NAVIGATION_ACTIVE, false)
+        if (isNavigationActive && !NavigationLocationService.isRunning && !navigationPrefActive) {
+            resetNavigationUiAfterExternalStop()
+        }
+        applyKeepScreenOnPreference()
+
         ImportService.setListener(::handleImportResult)
         ImportService.consumePendingResult(this)?.let(::handleImportResult)
         NavigationLocationService.freshLastLocation()?.let { lastLocation = it }
@@ -4578,6 +4612,20 @@ class MainActivity : AppCompatActivity(), LocationListener {
         binding.mapView.onStart()
     }
 
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        binding.root.post {
+            updateScaleBar()
+            if (isSimulationActive) {
+                updateSimulationMarker(simulationProgressMeters)
+            } else if (followGps) {
+                lastLocation?.takeIf(::isFreshLocation)?.let {
+                    centerOnLocation(it, animated = false)
+                }
+            }
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         binding.mapView.onResume()
@@ -4590,6 +4638,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
 
     override fun onStop() {
         NavigationLocationService.listener = null
+        NavigationLocationService.navigationStoppedListener = null
         ImportService.setListener(null)
         binding.mapView.onStop()
         super.onStop()
@@ -4627,7 +4676,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
         private const val MAP_SOURCE_ID = "offline-map-source"
         private const val ONLINE_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
         private const val PREFS_DISPLAY = "display_settings"
-        private const val PREF_KEEP_SCREEN_ON = "keep_screen_on"
+        private const val PREF_KEEP_SCREEN_ON_NAVIGATION = "keep_screen_on_navigation"
         private const val PREFS_MAP = "map_settings"
         private const val PREF_MAP_MODE = "map_mode"
         private const val MAP_MODE_ONLINE = "online"

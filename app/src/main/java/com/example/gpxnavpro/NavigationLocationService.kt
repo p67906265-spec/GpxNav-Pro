@@ -52,6 +52,7 @@ class NavigationLocationService : Service(), LocationListener {
                 .putFloat(PREF_NAVIGATION_PROGRESS_METERS, 0f)
                 .remove(PREF_NAVIGATION_ROUTE_PATH)
                 .apply()
+            navigationStoppedListener?.invoke()
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf(startId)
             return START_NOT_STICKY
@@ -303,6 +304,7 @@ class NavigationLocationService : Service(), LocationListener {
         @Volatile var lastNavigationFix: NavigationFix? = null
             private set
         @Volatile var listener: ((Location) -> Unit)? = null
+        @Volatile var navigationStoppedListener: (() -> Unit)? = null
 
         fun freshLastLocation(maxAgeMs: Long = MAX_LOCATION_AGE_MS): Location? {
             val location = lastLocation ?: return null

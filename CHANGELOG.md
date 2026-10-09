@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.18
+- Stop dalla notifica sincronizzato subito con l'Activity: UI torna su AVVIA e riparte il GPS locale.
+- Controllo aggiuntivo in onStart per recuperare correttamente uno stop avvenuto mentre l'app era in background.
+- Rotazione gestita con configChanges orientation|screenSize|screenLayout: Activity, BRouter e simulazione non vengono ricreati.
+- Aggiornamento della camera/mappa dopo il cambio orientamento.
+- Opzione schermo acceso modificata: ora vale solo durante la navigazione attiva.
+
 ## 1.17
 - Restyling grafico del pannello sinistro con look più pulito e moderno.
 - Nuova testata "GPX NAV PRO" con sottotitolo.
