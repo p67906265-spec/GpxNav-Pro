@@ -591,7 +591,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
 
     private fun startLocationUpdates() {
         if (NavigationLocationService.isRunning) {
-            NavigationLocationService.lastLocation?.let { onLocationChanged(it) }
+            NavigationLocationService.freshLastLocation()?.let { onLocationChanged(it) }
             return
         }
 
@@ -738,9 +738,10 @@ class MainActivity : AppCompatActivity(), LocationListener {
             stopSimulation(silent = true)
         }
         val route = activeRoute ?: return
-        val location = lastLocation
+        val location = lastLocation?.takeIf(::isFreshLocation)
         if (location == null) {
-            Toast.makeText(this, "Attendo la posizione GPS", Toast.LENGTH_SHORT).show()
+            lastLocation = null
+            Toast.makeText(this, "Attendo una posizione GPS recente", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -1043,6 +1044,11 @@ class MainActivity : AppCompatActivity(), LocationListener {
             binding.offRoutePanel.visibility = View.GONE
         }
         wasOffRoute = isOffRoute
+    }
+
+    private fun isFreshLocation(location: Location, maxAgeMs: Long = 15_000L): Boolean {
+        val ageNanos = android.os.SystemClock.elapsedRealtimeNanos() - location.elapsedRealtimeNanos
+        return ageNanos >= 0L && ageNanos <= maxAgeMs * 1_000_000L
     }
 
     private fun updateGpsMarker(location: Location) {
@@ -2435,7 +2441,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
             }
         }
 
-        NavigationLocationService.lastLocation?.let { onLocationChanged(it) }
+        NavigationLocationService.freshLastLocation()?.let { onLocationChanged(it) }
     }
 
     private fun restoreNavigationServiceIfNeeded() {
@@ -4091,26 +4097,6 @@ class MainActivity : AppCompatActivity(), LocationListener {
                   }
                 },
                 {
-                  "id": "road-labels",
-                  "type": "symbol",
-                  "source": "$MAP_SOURCE_ID",
-                  "source-layer": "roads",
-                  "minzoom": 13,
-                  "layout": {
-                    "symbol-placement": "line",
-                    "text-field": ["coalesce", ["get", "name"], ""],
-                    "text-size": ["interpolate", ["linear"], ["zoom"], 13, 10, 16, 14],
-                    "text-max-angle": 35,
-                    "text-letter-spacing": 0.02,
-                    "text-allow-overlap": false
-                  },
-                  "paint": {
-                    "text-color": "#263238",
-                    "text-halo-color": "#FFFFFF",
-                    "text-halo-width": 1.5
-                  }
-                },
-                {
                   "id": "roads-rail",
                   "type": "line",
                   "source": "$MAP_SOURCE_ID",
@@ -4492,7 +4478,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
         }
         ImportService.setListener(::handleImportResult)
         ImportService.consumePendingResult(this)?.let(::handleImportResult)
-        NavigationLocationService.lastLocation?.let { lastLocation = it }
+        NavigationLocationService.freshLastLocation()?.let { lastLocation = it }
         NavigationLocationService.lastNavigationFix?.let { fix ->
             if (isNavigationActive && !isApproachingStart) {
                 currentRouteProgressMeters = fix.progressMeters

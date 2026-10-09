@@ -39,6 +39,15 @@ class ImportService : Service() {
             buildNotification("Preparazione importazione…", indeterminate = true)
         )
 
+        // Un secondo start non deve mai fermare il job già in esecuzione.
+        // Il Service è unico: stopSelf(startId) / stopForeground() nel ramo busy
+        // distruggerebbero anche la copia lunga già attiva.
+        if (IMPORT_BUSY.get()) {
+            val requestedKind = if (intent?.action == ACTION_IMPORT_MAP) "Mappa" else "GPX"
+            deliver(ImportServiceResult.Failed(requestedKind, "Un'altra importazione è già in corso"))
+            return START_NOT_STICKY
+        }
+
         val action = intent?.action
         if (action == null) {
             stopForeground(STOP_FOREGROUND_REMOVE)
@@ -57,8 +66,6 @@ class ImportService : Service() {
 
         if (!IMPORT_BUSY.compareAndSet(false, true)) {
             deliver(ImportServiceResult.Failed(kind, "Un'altra importazione è già in corso"))
-            stopForeground(STOP_FOREGROUND_REMOVE)
-            stopSelf(startId)
             return START_NOT_STICKY
         }
 

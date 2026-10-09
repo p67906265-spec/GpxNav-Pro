@@ -70,6 +70,7 @@ class NavigationLocationService : Service(), LocationListener {
         runCatching { locationManager.removeUpdates(this) }
         runCatching { alertFeedback.release() }
         isRunning = false
+        lastLocation = null
         lastNavigationFix = null
         super.onDestroy()
     }
@@ -252,6 +253,7 @@ class NavigationLocationService : Service(), LocationListener {
         private const val PREF_MAIN_ROUTE_ACTIVE = "navigation_main_route_active"
         private const val DEFAULT_ALERT_DISTANCE = 1000
         private const val START_REACHED_DISTANCE_METERS = 40.0
+        private const val MAX_LOCATION_AGE_MS = 15_000L
 
         @Volatile var isRunning: Boolean = false
             private set
@@ -261,6 +263,13 @@ class NavigationLocationService : Service(), LocationListener {
             private set
         @Volatile var listener: ((Location) -> Unit)? = null
 
+        fun freshLastLocation(maxAgeMs: Long = MAX_LOCATION_AGE_MS): Location? {
+            val location = lastLocation ?: return null
+            val ageNanos = android.os.SystemClock.elapsedRealtimeNanos() - location.elapsedRealtimeNanos
+            if (ageNanos < 0L) return null
+            return location.takeIf { ageNanos <= maxAgeMs * 1_000_000L }
+        }
+
         fun start(context: Context) {
             val intent = Intent(context, NavigationLocationService::class.java)
             ContextCompat.startForegroundService(context, intent)
@@ -268,6 +277,8 @@ class NavigationLocationService : Service(), LocationListener {
 
         fun stop(context: Context) {
             isRunning = false
+            lastLocation = null
+            lastNavigationFix = null
             context.stopService(Intent(context, NavigationLocationService::class.java))
         }
     }

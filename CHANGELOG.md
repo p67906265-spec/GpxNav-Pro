@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.15
+- Un secondo import non può più interrompere una copia PMTiles già in corso.
+- BRouterClient gestisce più richieste pendenti senza perdere callback.
+- Aggiunto timeout BRouter e protezione dai callback dopo chiusura Activity.
+- L'unbind BRouter viene eseguito anche dopo una disconnessione del servizio.
+- La posizione GPS cached viene azzerata allo stop e i fix più vecchi di 15 secondi vengono scartati.
+- Rimossa l'etichettatura strade dallo stile PMTiles finché non sono disponibili glyph/font PBF offline.
+- Filtri GPX XML/octet-stream limitati ai path .gpx con android:host="*".
+
 ## 1.14
 - Gli avvisi GPX vengono generati per ogni passaggio entro 30 m dal waypoint, quindi funzionano su tutti i giri ripetuti.
 - I passaggi consecutivi sullo stesso waypoint vengono deduplicati per evitare doppi avvisi.
