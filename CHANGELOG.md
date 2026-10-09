@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.20
+- Menu laterale reso più compatto e più vicino al mockup approvato.
+- Migliorata la distanza dalla barra di stato.
+- Sezioni e voci ridotte in altezza per evitare l'effetto troppo ingombrante.
+- Percorsi: massimo 4 tracce visibili, ordinate dalla più recente.
+- Rimossi i pulsanti esterni Condividi ed Elimina dalle righe dei percorsi.
+- Nel menu della singola traccia aggiunti Salva e Condividi.
+- Restano disponibili Apri, Info, Simula, Modifica ed Elimina.
+
 ## 1.19
 - Nuovo pannello sinistro organizzato in quattro tendine apri/chiudi.
 - Traccia GPX: Carica GPX, Modifica GPX, Crea GPX.

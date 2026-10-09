@@ -1957,26 +1957,43 @@ class MainActivity : AppCompatActivity(), LocationListener {
         val files = gpxDirectory().listFiles { file -> file.extension.equals("gpx", true) }
             ?.sortedByDescending { it.lastModified() }
             .orEmpty()
+            .take(4)
+
         if (files.isEmpty()) {
             container.addView(TextView(this).apply {
                 text = "Nessun percorso importato"
-                setTextColor(android.graphics.Color.WHITE)
-                textSize = 15f
-                setPadding(4, 16, 4, 16)
-            })
+                setTextColor(android.graphics.Color.parseColor("#D9ECFF"))
+                textSize = 14f
+                gravity = android.view.Gravity.CENTER
+                setPadding(8, 14, 8, 14)
+                background = createMenuRowBackground()
+            }, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ))
             return
         }
+
         files.forEach { file ->
-            val row = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = android.view.Gravity.CENTER_VERTICAL
-                background = createMenuRowBackground()
-            }
-            row.addView(TextView(this).apply {
+            val row = TextView(this).apply {
                 text = file.nameWithoutExtension
                 setTextColor(android.graphics.Color.WHITE)
                 textSize = 14f
-                setPadding(12, 16, 12, 16)
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                background = createMenuRowBackground()
+                setCompoundDrawablesRelativeWithIntrinsicBounds(
+                    R.drawable.ic_route_profile,
+                    0,
+                    R.drawable.ic_chevron_right,
+                    0
+                )
+                compoundDrawablePadding = (12 * resources.displayMetrics.density).toInt()
+                setPadding(
+                    (12 * resources.displayMetrics.density).toInt(),
+                    (12 * resources.displayMetrics.density).toInt(),
+                    (12 * resources.displayMetrics.density).toInt(),
+                    (12 * resources.displayMetrics.density).toInt()
+                )
                 setOnClickListener {
                     showDrawerRouteActions(file)
                 }
@@ -1985,40 +2002,13 @@ class MainActivity : AppCompatActivity(), LocationListener {
                     showRouteAppearanceSettings(file)
                     true
                 }
-            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-            row.addView(ImageButton(this).apply {
-                setImageResource(android.R.drawable.ic_menu_share)
-                imageTintList = ColorStateList.valueOf(android.graphics.Color.WHITE)
-                background = null
-                contentDescription = "Salva o condividi ${file.nameWithoutExtension}"
-                setPadding(12, 12, 12, 12)
-                setOnClickListener {
-                    showGpxExportActions(file)
-                }
-            }, LinearLayout.LayoutParams(
-                (48 * resources.displayMetrics.density).toInt(),
-                (48 * resources.displayMetrics.density).toInt()
-            ))
-            row.addView(ImageButton(this).apply {
-                setImageResource(R.drawable.ic_delete)
-                imageTintList = ColorStateList.valueOf(
-                    android.graphics.Color.parseColor("#FF8A80")
-                )
-                background = null
-                contentDescription = "Elimina ${file.nameWithoutExtension}"
-                setPadding(12, 12, 12, 12)
-                setOnClickListener {
-                    confirmDeleteDrawerRoute(file)
-                }
-            }, LinearLayout.LayoutParams(
-                (48 * resources.displayMetrics.density).toInt(),
-                (48 * resources.displayMetrics.density).toInt()
-            ))
+            }
+
             container.addView(row, LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                bottomMargin = 8
+                bottomMargin = (5 * resources.displayMetrics.density).toInt()
             })
         }
     }
@@ -2027,7 +2017,15 @@ class MainActivity : AppCompatActivity(), LocationListener {
         val dialog = AlertDialog.Builder(this)
             .setTitle(file.nameWithoutExtension)
             .setItems(
-                arrayOf("Apri traccia", "Info traccia", "Simula giro", "Modifica traccia", "Elimina traccia")
+                arrayOf(
+                    "Apri traccia",
+                    "Info traccia",
+                    "Simula giro",
+                    "Modifica traccia",
+                    "Salva",
+                    "Condividi",
+                    "Elimina traccia"
+                )
             ) { _, which ->
                 closeDrawer()
                 when (which) {
@@ -2035,7 +2033,12 @@ class MainActivity : AppCompatActivity(), LocationListener {
                     1 -> showRouteInfo(file)
                     2 -> openGpxFile(file, zoomToRoute = true) { startSimulation() }
                     3 -> openGpxFile(file, zoomToRoute = true) { showGpxEditorStart() }
-                    4 -> confirmDeleteDrawerRoute(file)
+                    4 -> {
+                        pendingExportFile = file
+                        exportGpxLauncher.launch(file.name)
+                    }
+                    5 -> shareGpx(file)
+                    6 -> confirmDeleteDrawerRoute(file)
                 }
             }
             .setNegativeButton("Annulla", null)
