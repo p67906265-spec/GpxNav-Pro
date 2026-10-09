@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.22.1
+- Corretto il nome della traccia mostrato nella barra superiore dopo Rinomina.
+- La barra superiore usa ora il nome del file GPX salvato, così la rinomina resta corretta anche riaprendo la traccia.
+
 ## 1.22
 - Aggiunta l'azione Rinomina nelle opzioni della traccia.
 - La rinomina aggiorna anche la traccia attiva e il percorso salvato per la navigazione.

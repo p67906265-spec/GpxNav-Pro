@@ -2104,6 +2104,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
 
                 if (activeRouteFile?.absolutePath == oldPath) {
                     activeRouteFile = target
+                    binding.routeNameText.text = target.nameWithoutExtension
                     getPreferences(Context.MODE_PRIVATE)
                         .edit()
                         .putString(PREF_ACTIVE_GPX, target.absolutePath)
@@ -2883,7 +2884,8 @@ class MainActivity : AppCompatActivity(), LocationListener {
     }
 
     private fun updateRouteHeader(route: GpxRoute) {
-        binding.routeNameText.text = route.name
+        binding.routeNameText.text =
+            activeRouteFile?.nameWithoutExtension ?: route.name
         currentRouteProgressMeters = lastLocation
             ?.let { navigationEngine.match(it)?.progressMeters }
             ?: 0.0
