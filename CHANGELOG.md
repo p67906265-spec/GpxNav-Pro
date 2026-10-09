@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.17
+- Restyling grafico del pannello sinistro con look più pulito e moderno.
+- Nuova testata "GPX NAV PRO" con sottotitolo.
+- Voci menu trasformate in card arrotondate con bordo leggero.
+- Sezioni separate: Navigazione, Impostazioni rapide e Percorsi.
+- Blocco percorsi e pulsante Chiudi più coerenti con il nuovo stile.
+- Nessuna modifica alla logica del navigatore: aggiornamento solo grafico.
+
 ## 1.16.1
 - Corretto errore lint MissingConstraints sul pulsante nascosto importGpxButton.
 - Aggiunti vincoli orizzontale e verticale nel ConstraintLayout.
