@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.24
+- In landscape la mappa ora continua dietro la barra superiore.
+- La parte centrale con GPX NAV e nome traccia diventa trasparente in orizzontale.
+- I pannelli INIZIO e FINE restano invariati e ben leggibili.
+- Aggiunta ombra al testo centrale in landscape per mantenerlo leggibile sulla mappa.
+- In portrait la grafica resta identica alla versione precedente.
+
 ## 1.23
 - Distanza frecce: aggiunte le opzioni 5 km e 10 km.
 - Etichette distanza frecce rese esplicite in metri/km.

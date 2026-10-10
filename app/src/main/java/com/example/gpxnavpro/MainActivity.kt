@@ -240,6 +240,8 @@ class MainActivity : AppCompatActivity(), LocationListener {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        applyLandscapeTopBarStyle(resources.configuration)
+
         manualStartKilometers = getSharedPreferences(PREFS_DISPLAY, Context.MODE_PRIVATE)
             .getFloat(PREF_MANUAL_START_KM, 0f)
             .toDouble()
@@ -4836,8 +4838,48 @@ class MainActivity : AppCompatActivity(), LocationListener {
         binding.mapView.onStart()
     }
 
+    private fun applyLandscapeTopBarStyle(config: android.content.res.Configuration) {
+        val isLandscape =
+            config.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+
+        val mapParams = binding.mapView.layoutParams as
+            androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
+
+        if (isLandscape) {
+            // In landscape the map runs behind the complete top bar.
+            // INIZIO/FINE retain their own blue cards; only the central area becomes transparent.
+            binding.topBar.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            mapParams.topToBottom = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.UNSET
+            mapParams.topToTop = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+
+            binding.topTitleText.setShadowLayer(
+                4f,
+                0f,
+                1.5f,
+                android.graphics.Color.BLACK
+            )
+            binding.routeNameText.setShadowLayer(
+                3f,
+                0f,
+                1f,
+                android.graphics.Color.BLACK
+            )
+        } else {
+            binding.topBar.setBackgroundColor(android.graphics.Color.parseColor("#082F5B"))
+            mapParams.topToTop = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.UNSET
+            mapParams.topToBottom = binding.topBar.id
+
+            binding.topTitleText.setShadowLayer(0f, 0f, 0f, android.graphics.Color.TRANSPARENT)
+            binding.routeNameText.setShadowLayer(0f, 0f, 0f, android.graphics.Color.TRANSPARENT)
+        }
+
+        binding.mapView.layoutParams = mapParams
+        binding.mapView.requestLayout()
+    }
+
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
+        applyLandscapeTopBarStyle(newConfig)
         binding.root.post {
             updateScaleBar()
             if (isSimulationActive) {
