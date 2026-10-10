@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.23
+- Distanza frecce: aggiunte le opzioni 5 km e 10 km.
+- Etichette distanza frecce rese esplicite in metri/km.
+- Colori pendenza semplificati: verde pianura, giallo salita, rosso salita forte, azzurro discesa, blu discesa forte.
+- Soglie: pianura da -1% a +1%; giallo oltre +1%; rosso da +7%; azzurro sotto -1%; blu da -7%.
+
+## 1.22.2
+- I messaggi di successo dopo importazione GPX o mappa ora spariscono automaticamente dopo 1,8 secondi.
+- I messaggi di errore e gli stati di importazione restano invariati.
+
 ## 1.22.1
 - Corretto il nome della traccia mostrato nella barra superiore dopo Rinomina.
 - La barra superiore usa ora il nome del file GPX salvato, così la rinomina resta corretta anche riaprendo la traccia.

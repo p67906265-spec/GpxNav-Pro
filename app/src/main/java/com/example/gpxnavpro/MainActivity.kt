@@ -2872,15 +2872,11 @@ class MainActivity : AppCompatActivity(), LocationListener {
     }
 
     private fun slopeColor(gradePercent: Double): String = when {
-        gradePercent >= 10.0 -> "#7F0000"
-        gradePercent >= 7.0 -> "#B71C1C"
-        gradePercent >= 4.0 -> "#E53935"
-        gradePercent >= 1.0 -> "#FF8A80"
-        gradePercent <= -10.0 -> "#08306B"
-        gradePercent <= -7.0 -> "#08519C"
-        gradePercent <= -4.0 -> "#3182BD"
-        gradePercent <= -1.0 -> "#9ECAE1"
-        else -> "#B8A6E8"
+        gradePercent >= 7.0 -> "#E53935"   // salita forte: rosso
+        gradePercent > 1.0 -> "#FDD835"    // salita: giallo
+        gradePercent <= -7.0 -> "#1565C0"  // discesa forte: blu
+        gradePercent < -1.0 -> "#4FC3F7"   // discesa: azzurro
+        else -> "#43A047"                  // pianura: verde
     }
 
     private fun updateRouteHeader(route: GpxRoute) {
@@ -3573,7 +3569,12 @@ class MainActivity : AppCompatActivity(), LocationListener {
         }
         val spacingButtons = mutableListOf<TextView>()
         ROUTE_ARROW_SPACING.forEach { value ->
-            val choice = createCompactNumberChoice(value.toString(), value == selectedSpacing)
+            val spacingLabel = if (value >= 1000) {
+                "${value / 1000} km"
+            } else {
+                "$value m"
+            }
+            val choice = createCompactNumberChoice(spacingLabel, value == selectedSpacing)
             choice.setOnClickListener {
                 selectedSpacing = value
                 spacingButtons.forEachIndexed { index, button ->
@@ -3627,13 +3628,15 @@ class MainActivity : AppCompatActivity(), LocationListener {
     }
 
     private fun createCompactNumberChoice(label: String, selected: Boolean): TextView {
-        val size = (42 * resources.displayMetrics.density).toInt()
+        val density = resources.displayMetrics.density
+        val height = (42 * density).toInt()
+        val width = ((if (label.contains(" ")) 58 else 42) * density).toInt()
         return TextView(this).apply {
             text = label
             gravity = android.view.Gravity.CENTER
             textSize = if (label.length >= 4) 12f else 15f
             setTypeface(typeface, android.graphics.Typeface.BOLD)
-            layoutParams = LinearLayout.LayoutParams(size, size).apply {
+            layoutParams = LinearLayout.LayoutParams(width, height).apply {
                 marginEnd = (6 * resources.displayMetrics.density).toInt()
             }
             styleCompactNumberChoice(this, selected)
@@ -4212,13 +4215,13 @@ class MainActivity : AppCompatActivity(), LocationListener {
         when (result) {
             is ImportServiceResult.GpxImported -> {
                 val file = File(result.filePath)
-                showStatus("GPX importato correttamente", false)
+                showTransientStatus("GPX importato correttamente")
                 openGpxFile(file, zoomToRoute = true) {
                     populateDrawerRoutes()
                 }
             }
             ImportServiceResult.MapImported -> {
-                showStatus("Mappa importata correttamente", false)
+                showTransientStatus("Mappa importata correttamente")
                 saveMapMode(MAP_MODE_OFFLINE)
                 loadInstalledMap()
             }
@@ -4469,6 +4472,16 @@ class MainActivity : AppCompatActivity(), LocationListener {
         binding.statusText.text = message
         binding.importMapButton.visibility = if (showButton) View.VISIBLE else View.GONE
         binding.statusPanel.visibility = View.VISIBLE
+    }
+
+    private fun showTransientStatus(message: String, durationMs: Long = 1800L) {
+        showStatus(message, false)
+        binding.statusPanel.removeCallbacks(hideTransientStatusRunnable)
+        binding.statusPanel.postDelayed(hideTransientStatusRunnable, durationMs)
+    }
+
+    private val hideTransientStatusRunnable = Runnable {
+        binding.statusPanel.visibility = View.GONE
     }
 
     private fun showCommandGuide() {
@@ -4955,7 +4968,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
         private const val PREF_NAVIGATION_MAIN_ROUTE_ACTIVE = "navigation_main_route_active"
         private const val DEFAULT_ALERT_DISTANCE = 1000
         private val ALERT_DISTANCE_OPTIONS = intArrayOf(250, 500, 1000, 1500, 2000, 3000)
-        private val ROUTE_ARROW_SPACING = intArrayOf(100, 200, 300, 500, 750, 1000)
+        private val ROUTE_ARROW_SPACING = intArrayOf(100, 200, 300, 500, 750, 1000, 5000, 10000)
         private val ROUTE_COLORS = listOf(
             "#005BBB", "#E31B23", "#16A34A", "#FF8C00", "#7C3AED", "#111827", "#FFFFFF"
         )
