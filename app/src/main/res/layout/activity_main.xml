@@ -736,7 +736,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     android:gravity="center"
-                    android:text="Paolo Free 1.0  •  v1.24"
+                    android:text="Paolo Free 1.0  •  v1.24.1"
                     android:textColor="#9FCBFF"
                     android:textSize="12sp" />
             </LinearLayout>

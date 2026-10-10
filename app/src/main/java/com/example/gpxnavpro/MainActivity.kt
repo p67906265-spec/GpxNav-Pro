@@ -393,6 +393,11 @@ class MainActivity : AppCompatActivity(), LocationListener {
         }
         binding.startPanel.setOnClickListener {
             tripResetOffsetMeters = currentRouteProgressMeters
+            manualStartKilometers = 0.0
+            getSharedPreferences(PREFS_DISPLAY, Context.MODE_PRIVATE)
+                .edit()
+                .putFloat(PREF_MANUAL_START_KM, 0f)
+                .apply()
             updateDistancePanels()
             Toast.makeText(this, "Contachilometri azzerato", Toast.LENGTH_SHORT).show()
         }

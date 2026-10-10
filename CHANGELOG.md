@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.24.1
+- Corretto l'azzeramento del campo INIZIO.
+- Toccando INIZIO vengono azzerati sia il progresso parziale sia gli eventuali km manuali impostati da FINE.
+- Dopo il reset il campo INIZIO torna realmente a 0,0 km.
+
 ## 1.24
 - In landscape la mappa ora continua dietro la barra superiore.
 - La parte centrale con GPX NAV e nome traccia diventa trasparente in orizzontale.
