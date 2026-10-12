@@ -871,10 +871,12 @@ class MainActivity : AppCompatActivity(), LocationListener {
                 startLocationUpdates()
                 binding.startNavigationButton.text = "AVVIA"
                 binding.turnPanel.visibility = View.GONE
-                showStatus(
-                    "Impossibile calcolare il percorso:\n${error.message ?: "errore BRouter"}",
-                    false
-                )
+                if (!showMissingBRouterSegmentDialogIfNeeded(error)) {
+                    showStatus(
+                        "Impossibile calcolare il percorso:\n${error.message ?: "errore BRouter"}",
+                        false
+                    )
+                }
             }
         }
     }
@@ -1374,11 +1376,13 @@ class MainActivity : AppCompatActivity(), LocationListener {
                         drawCreatedGpxDraft()
                     }.onFailure { error ->
                         createGpxControlPoints.removeAt(createGpxControlPoints.lastIndex)
-                        Toast.makeText(
-                            this,
-                            "Impossibile collegare il punto: ${error.message}",
-                            Toast.LENGTH_LONG
-                        ).show()
+                        if (!showMissingBRouterSegmentDialogIfNeeded(error)) {
+                            Toast.makeText(
+                                this,
+                                "Impossibile collegare il punto: ${error.message}",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
                     }
                 }
             }
@@ -1587,11 +1591,13 @@ class MainActivity : AppCompatActivity(), LocationListener {
                 }
                 saveEditedGpx(mergedPoints, route.waypoints, "punto_spostato")
             }.onFailure { error ->
-                Toast.makeText(
-                    this,
-                    "Impossibile spostare il punto: ${error.message}",
-                    Toast.LENGTH_LONG
-                ).show()
+                if (!showMissingBRouterSegmentDialogIfNeeded(error)) {
+                    Toast.makeText(
+                        this,
+                        "Impossibile spostare il punto: ${error.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
             }
         }
     }
@@ -1652,11 +1658,13 @@ class MainActivity : AppCompatActivity(), LocationListener {
                 }
                 saveEditedGpx(mergedPoints, route.waypoints, "tratto_aggiunto")
             }.onFailure { error ->
-                Toast.makeText(
-                    this,
-                    "Impossibile creare il tratto: ${error.message}",
-                    Toast.LENGTH_LONG
-                ).show()
+                if (!showMissingBRouterSegmentDialogIfNeeded(error)) {
+                    Toast.makeText(
+                        this,
+                        "Impossibile creare il tratto: ${error.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
             }
         }
     }
@@ -4479,6 +4487,50 @@ class MainActivity : AppCompatActivity(), LocationListener {
     // =========================================================
     // PANNELLO DI STATO
     // =========================================================
+
+    /**
+     * Se BRouter segnala un segmento di routing mancante (es. "datafile E10_N45.rd5 not found")
+     * mostra un avviso chiaro con il nome del riquadro e un pulsante per aprire BRouter,
+     * dove si scarica dal Download Manager. Restituisce true se l'errore è stato gestito.
+     */
+    private var missingSegmentDialog: AlertDialog? = null
+
+    private fun showMissingBRouterSegmentDialogIfNeeded(error: Throwable): Boolean {
+        val message = error.message ?: return false
+        if (!message.contains("not found", ignoreCase = true)) return false
+        val tiles = Regex("([EW]\\d+_[NS]\\d+)\\.rd5", RegexOption.IGNORE_CASE)
+            .findAll(message)
+            .map { it.groupValues[1].uppercase() }
+            .distinct()
+            .toList()
+        if (tiles.isEmpty()) return false
+        if (isFinishing || isDestroyed) return true
+        if (missingSegmentDialog?.isShowing == true) return true
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Dati di routing mancanti")
+            .setMessage(
+                "BRouter non ha i dati per questa zona.\n\n" +
+                    "Riquadro da scaricare: ${tiles.joinToString(", ")}\n\n" +
+                    "Apri BRouter, entra nel Download Manager, scarica il riquadro " +
+                    "(può pesare qualche centinaio di MB: meglio con il Wi-Fi) " +
+                    "e poi riprova ad avviare la navigazione."
+            )
+            .setPositiveButton("Apri BRouter") { _, _ ->
+                val launchIntent = packageManager.getLaunchIntentForPackage("btools.routingapp")
+                if (launchIntent != null) {
+                    startActivity(launchIntent)
+                } else {
+                    Toast.makeText(this, "BRouter non è installato", Toast.LENGTH_LONG).show()
+                }
+            }
+            .setNegativeButton("Chiudi", null)
+            .create()
+        dialog.setOnShowListener { styleBlueDialog(dialog) }
+        missingSegmentDialog = dialog
+        dialog.show()
+        return true
+    }
 
     private fun showStatus(message: String, showButton: Boolean) {
         binding.statusText.text = message
