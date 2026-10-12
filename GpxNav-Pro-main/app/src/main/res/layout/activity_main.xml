@@ -1,0 +1,1064 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#E9E7D8"
+    tools:context=".MainActivity">
+
+    <org.maplibre.android.maps.MapView
+        android:id="@+id/mapView"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/topBar" />
+
+    <LinearLayout
+        android:id="@+id/topBar"
+        android:layout_width="0dp"
+        android:layout_height="102dp"
+        android:background="#082F5B"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <LinearLayout
+            android:id="@+id/startPanel"
+            android:layout_width="98dp"
+            android:layout_height="63dp"
+            android:layout_marginStart="4dp"
+            android:background="@drawable/bg_top_info"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:translationY="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="INIZIO"
+                android:textColor="#DCEBFF"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/startDistanceText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:lines="2"
+                android:text="0.0\nKM"
+                android:textColor="#FFFFFF"
+                android:textSize="19sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/topTitleText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="GPX NAV"
+                android:textColor="#FFFFFF"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:translationY="16dp" />
+
+            <TextView
+                android:id="@+id/routeNameText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:gravity="center"
+                android:maxLines="1"
+                android:text="Nessun percorso"
+                android:textColor="#DCEBFF"
+                android:textSize="10sp"
+                android:translationY="19dp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/finishPanel"
+            android:layout_width="98dp"
+            android:layout_height="63dp"
+            android:background="@drawable/bg_top_info"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:translationY="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="FINE"
+                android:textColor="#DCEBFF"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/finishDistanceText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:lines="2"
+                android:text="--.-\nKM"
+                android:textColor="#FFFFFF"
+                android:textSize="19sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/speedPanel"
+        android:layout_width="58dp"
+        android:layout_height="58dp"
+        android:layout_marginStart="10dp"
+        android:layout_marginBottom="5dp"
+        android:background="@drawable/bg_map_control_square"
+        android:gravity="center"
+        android:orientation="vertical"
+        app:layout_constraintBottom_toTopOf="@id/menuButton"
+        app:layout_constraintStart_toStartOf="parent"
+        >
+
+        <TextView
+            android:id="@+id/speedText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:lines="2"
+            android:text="--\nKM/H"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/mapControls"
+        android:layout_width="106dp"
+        android:layout_height="106dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginBottom="56dp"
+        app:layout_constraintBottom_toBottomOf="@id/mapView"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/zoomInButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:contentDescription="Aumenta zoom"
+            android:src="@drawable/ic_add"
+            app:backgroundTint="#005BBB"
+            app:fabCustomSize="48dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:shapeAppearanceOverlay="@style/GpxNavProCircleShape"
+            app:tint="#FFFFFF" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/recenterButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:contentDescription="Centra posizione GPS"
+            android:src="@drawable/ic_my_location"
+            app:backgroundTint="#005BBB"
+            app:fabCustomSize="48dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:shapeAppearanceOverlay="@style/GpxNavProCircleShape"
+            app:tint="#FFFFFF" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/zoomOutButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:contentDescription="Riduci zoom"
+            android:src="@drawable/ic_remove"
+            app:backgroundTint="#005BBB"
+            app:fabCustomSize="48dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:shapeAppearanceOverlay="@style/GpxNavProCircleShape"
+            app:tint="#FFFFFF" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <androidx.appcompat.widget.AppCompatImageButton
+        android:id="@+id/menuButton"
+        android:layout_width="58dp"
+        android:layout_height="58dp"
+        android:layout_marginStart="10dp"
+        android:layout_marginBottom="56dp"
+        android:background="@drawable/bg_map_control_square"
+        android:contentDescription="Apri menu"
+        android:elevation="6dp"
+        android:padding="15dp"
+        android:src="@drawable/ic_menu"
+        android:tint="#FFFFFF"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/startNavigationButton"
+        android:layout_width="121dp"
+        android:layout_height="46dp"
+        android:layout_marginBottom="56dp"
+        android:enabled="false"
+        android:text="AVVIA"
+        android:textColor="#17202A"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        app:backgroundTint="#FFD21F"
+        app:cornerRadius="27dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/eventAlertPanel"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="175dp"
+        android:visibility="gone"
+        app:cardBackgroundColor="#F59E0B"
+        app:cardCornerRadius="14dp"
+        app:cardElevation="8dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <TextView
+            android:id="@+id/eventAlertText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:paddingStart="12dp"
+            android:paddingTop="10dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="10dp"
+            android:textColor="#FFFFFF"
+            android:textSize="17sp"
+            android:textStyle="bold" />
+    </com.google.android.material.card.MaterialCardView>
+
+    <FrameLayout
+        android:id="@+id/scaleBar"
+        android:layout_width="91dp"
+        android:layout_height="32dp"
+        android:layout_marginBottom="4dp"
+        app:layout_constraintBottom_toTopOf="@id/startNavigationButton"
+        app:layout_constraintEnd_toEndOf="@id/startNavigationButton"
+        app:layout_constraintStart_toStartOf="@id/startNavigationButton">
+
+        <TextView
+            android:id="@+id/scaleText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:shadowColor="#000000"
+            android:shadowDx="1"
+            android:shadowDy="1"
+            android:shadowRadius="2"
+            android:text="100 m"
+            android:textColor="#005BBB"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="3dp"
+            android:layout_gravity="bottom"
+            android:layout_marginBottom="2dp"
+            android:background="#005BBB" />
+
+        <View
+            android:layout_width="3dp"
+            android:layout_height="9dp"
+            android:layout_gravity="bottom|start"
+            android:layout_marginBottom="2dp"
+            android:background="#005BBB" />
+
+        <View
+            android:layout_width="3dp"
+            android:layout_height="9dp"
+            android:layout_gravity="bottom|end"
+            android:layout_marginBottom="2dp"
+            android:background="#005BBB" />
+    </FrameLayout>
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/turnPanel"
+        android:layout_width="260dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:visibility="gone"
+        app:cardBackgroundColor="#FFD21F"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="8dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/topBar">
+
+        <TextView
+            android:id="@+id/turnText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:paddingStart="12dp"
+            android:paddingTop="12dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="12dp"
+            android:text="VERSO LA PARTENZA"
+            android:textColor="#17202A"
+            android:textSize="17sp"
+            android:textStyle="bold" />
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/offRoutePanel"
+        android:layout_width="260dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="72dp"
+        android:visibility="gone"
+        app:cardBackgroundColor="#FFD21F"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="8dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/topBar">
+
+        <TextView
+            android:id="@+id/offRouteText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:paddingStart="12dp"
+            android:paddingTop="10dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="10dp"
+            android:text="FUORI PERCORSO"
+            android:textColor="#17202A"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/statusPanel"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        app:cardBackgroundColor="#174F8B"
+        app:cardCornerRadius="18dp"
+        app:cardElevation="8dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="24dp">
+
+            <TextView
+                android:id="@+id/statusText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="Nessuna mappa offline installata"
+                android:textColor="#FFFFFF"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/importMapButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:text="Importa mappa PMTiles"
+                android:textAllCaps="false"
+                app:cornerRadius="14dp" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <View
+        android:id="@+id/drawerScrim"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#77000000"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <LinearLayout
+        android:id="@+id/drawerPanel"
+        android:layout_width="292dp"
+        android:layout_height="0dp"
+        android:background="#062C58"
+        android:elevation="18dp"
+        android:fitsSystemWindows="true"
+        android:orientation="vertical"
+        android:translationX="-320dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="16dp"
+            android:paddingTop="10dp"
+            android:paddingEnd="16dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="GPX NAV PRO"
+                android:textColor="#FFFFFF"
+                android:textSize="23sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:layout_marginBottom="5dp"
+                android:text="Navigazione GPX offline / online"
+                android:textColor="#A9D2FF"
+                android:textSize="12sp" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginBottom="10dp"
+                android:background="#1F5FA8" />
+        </LinearLayout>
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:fillViewport="true"
+            android:overScrollMode="never">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="20dp">
+
+                <TextView
+                    android:id="@+id/trackSectionHeader"
+                    android:layout_width="match_parent"
+                    android:layout_height="46dp"
+                    android:layout_marginBottom="5dp"
+                    android:background="@drawable/bg_drawer_section"
+                    android:drawableStart="@drawable/ic_route"
+                    android:drawableEnd="@drawable/ic_expand_less"
+                    android:drawablePadding="12dp"
+                    android:gravity="center_vertical"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:text="TRACCIA GPX"
+                    android:textColor="#A9D2FF"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:id="@+id/trackSectionContent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/importGpxDrawerButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="46dp"
+                        android:layout_marginBottom="5dp"
+                        android:background="@drawable/bg_drawer_action"
+                        android:drawableStart="@drawable/ic_import"
+                        android:drawableEnd="@drawable/ic_chevron_right"
+                        android:drawablePadding="12dp"
+                        android:gravity="center_vertical"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:text="Carica GPX"
+                        android:textColor="#FFFFFF"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:id="@+id/editGpxDrawerButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="46dp"
+                        android:layout_marginBottom="5dp"
+                        android:background="@drawable/bg_drawer_action"
+                        android:drawableStart="@drawable/ic_edit_add_route"
+                        android:drawableEnd="@drawable/ic_chevron_right"
+                        android:drawablePadding="12dp"
+                        android:gravity="center_vertical"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:text="Modifica GPX"
+                        android:textColor="#FFFFFF"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:id="@+id/createGpxDrawerButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="46dp"
+                        android:layout_marginBottom="8dp"
+                        android:background="@drawable/bg_drawer_action"
+                        android:drawableStart="@drawable/ic_add"
+                        android:drawableEnd="@drawable/ic_chevron_right"
+                        android:drawablePadding="12dp"
+                        android:gravity="center_vertical"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:text="Crea GPX"
+                        android:textColor="#FFFFFF"
+                        android:textSize="15sp" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/raceSectionHeader"
+                    android:layout_width="match_parent"
+                    android:layout_height="46dp"
+                    android:layout_marginBottom="5dp"
+                    android:background="@drawable/bg_drawer_section"
+                    android:drawableStart="@drawable/ic_alert"
+                    android:drawableEnd="@drawable/ic_expand_more"
+                    android:drawablePadding="12dp"
+                    android:gravity="center_vertical"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:text="GARA"
+                    android:textColor="#8FE0A5"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:id="@+id/raceSectionContent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:id="@+id/alertsDrawerButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="46dp"
+                        android:layout_marginBottom="5dp"
+                        android:background="@drawable/bg_drawer_action"
+                        android:drawableStart="@drawable/ic_alert"
+                        android:drawableEnd="@drawable/ic_chevron_right"
+                        android:drawablePadding="12dp"
+                        android:gravity="center_vertical"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:text="Distanza preavviso"
+                        android:textColor="#FFFFFF"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:id="@+id/alertKilometersDrawerButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="46dp"
+                        android:layout_marginBottom="5dp"
+                        android:background="@drawable/bg_drawer_action"
+                        android:drawableStart="@drawable/ic_pin"
+                        android:drawableEnd="@drawable/ic_chevron_right"
+                        android:drawablePadding="12dp"
+                        android:gravity="center_vertical"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:text="Km avvisi"
+                        android:textColor="#FFFFFF"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:id="@+id/appearanceDrawerButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="46dp"
+                        android:layout_marginBottom="8dp"
+                        android:background="@drawable/bg_drawer_action"
+                        android:drawableStart="@drawable/ic_palette"
+                        android:drawableEnd="@drawable/ic_chevron_right"
+                        android:drawablePadding="12dp"
+                        android:gravity="center_vertical"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:text="Aspetto traccia"
+                        android:textColor="#FFFFFF"
+                        android:textSize="15sp" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/routesSectionHeader"
+                    android:layout_width="match_parent"
+                    android:layout_height="46dp"
+                    android:layout_marginBottom="5dp"
+                    android:background="@drawable/bg_drawer_section"
+                    android:drawableStart="@drawable/ic_route_profile"
+                    android:drawableEnd="@drawable/ic_expand_less"
+                    android:drawablePadding="12dp"
+                    android:gravity="center_vertical"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:text="PERCORSI"
+                    android:textColor="#FFD067"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:id="@+id/routesSectionContent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:id="@+id/drawerRouteList"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
+                        android:orientation="vertical" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/settingsSectionHeader"
+                    android:layout_width="match_parent"
+                    android:layout_height="46dp"
+                    android:layout_marginBottom="5dp"
+                    android:background="@drawable/bg_drawer_section"
+                    android:drawableStart="@drawable/ic_settings"
+                    android:drawableEnd="@drawable/ic_expand_more"
+                    android:drawablePadding="12dp"
+                    android:gravity="center_vertical"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:text="IMPOSTAZIONI"
+                    android:textColor="#C8B3FF"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:id="@+id/settingsSectionContent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:id="@+id/offlineMapDrawerButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="46dp"
+                        android:layout_marginBottom="5dp"
+                        android:background="@drawable/bg_drawer_action"
+                        android:drawableStart="@drawable/ic_map"
+                        android:drawableEnd="@drawable/ic_chevron_right"
+                        android:drawablePadding="12dp"
+                        android:gravity="center_vertical"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:text="Mappe online / offline"
+                        android:textColor="#FFFFFF"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:id="@+id/keepScreenOnDrawerButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="46dp"
+                        android:layout_marginBottom="5dp"
+                        android:background="@drawable/bg_drawer_action"
+                        android:drawableStart="@drawable/ic_screen_on"
+                        android:drawablePadding="12dp"
+                        android:gravity="center_vertical"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:text="Schermo acceso in navigazione: Sì"
+                        android:textColor="#FFFFFF"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:id="@+id/brouterProfileDrawerButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="46dp"
+                        android:layout_marginBottom="5dp"
+                        android:background="@drawable/bg_drawer_action"
+                        android:drawableStart="@drawable/ic_route_profile"
+                        android:drawableEnd="@drawable/ic_chevron_right"
+                        android:drawablePadding="12dp"
+                        android:gravity="center_vertical"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:text="Profilo BRouter: Moto / auto rapido"
+                        android:textColor="#FFFFFF"
+                        android:textSize="15sp" />
+
+                    <TextView
+                        android:id="@+id/guideDrawerButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="46dp"
+                        android:layout_marginBottom="8dp"
+                        android:background="@drawable/bg_drawer_action"
+                        android:drawableStart="@drawable/ic_help"
+                        android:drawableEnd="@drawable/ic_chevron_right"
+                        android:drawablePadding="12dp"
+                        android:gravity="center_vertical"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:text="Guida comandi"
+                        android:textColor="#FFFFFF"
+                        android:textSize="15sp" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:gravity="center"
+                    android:text="Paolo Free 1.0  •  v1.24.1"
+                    android:textColor="#9FCBFF"
+                    android:textSize="12sp" />
+            </LinearLayout>
+        </ScrollView>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/gpxEditToolbar"
+        android:layout_width="64dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:background="@android:color/transparent"
+        android:orientation="vertical"
+        android:padding="4dp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/mapView"
+        app:layout_constraintStart_toStartOf="@id/mapView"
+        app:layout_constraintTop_toTopOf="@id/mapView">
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/editAddSegmentButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:alpha="0.86"
+            android:contentDescription="Aggiungi tratto"
+            android:src="@drawable/ic_edit_add_route"
+            app:backgroundTint="#1261A0"
+            app:fabCustomSize="48dp"
+            app:tint="#FFFFFF" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/editCutButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginTop="10dp"
+            android:alpha="0.86"
+            android:contentDescription="Taglia traccia"
+            android:src="@drawable/ic_edit_cut"
+            app:backgroundTint="#1261A0"
+            app:fabCustomSize="48dp"
+            app:tint="#FFFFFF" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/editReverseButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginTop="10dp"
+            android:alpha="0.86"
+            android:contentDescription="Inverti traccia"
+            android:src="@drawable/ic_edit_reverse"
+            app:backgroundTint="#1261A0"
+            app:fabCustomSize="48dp"
+            app:tint="#FFFFFF" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/editMovePointButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginTop="10dp"
+            android:alpha="0.86"
+            android:contentDescription="Sposta punto GPX"
+            android:src="@drawable/ic_edit_move_point"
+            app:backgroundTint="#1261A0"
+            app:fabCustomSize="48dp"
+            app:tint="#FFFFFF" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/editMergeRouteButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginTop="10dp"
+            android:alpha="0.86"
+            android:contentDescription="Unisci con un'altra traccia"
+            android:src="@drawable/ic_edit_merge"
+            app:backgroundTint="#1261A0"
+            app:fabCustomSize="48dp"
+            app:tint="#FFFFFF" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/editRepeatRouteButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginTop="10dp"
+            android:alpha="0.86"
+            android:contentDescription="Ripeti traccia per più giri"
+            android:src="@drawable/ic_edit_repeat"
+            app:backgroundTint="#1261A0"
+            app:fabCustomSize="48dp"
+            app:tint="#FFFFFF" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/editCenterRouteButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginTop="10dp"
+            android:alpha="0.86"
+            android:contentDescription="Centra traccia GPX"
+            android:src="@drawable/ic_edit_fit_route"
+            app:backgroundTint="#1261A0"
+            app:fabCustomSize="48dp"
+            app:tint="#FFFFFF" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/editCloseButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginTop="14dp"
+            android:alpha="0.86"
+            android:contentDescription="Termina modifica"
+            android:src="@drawable/ic_edit_done"
+            app:backgroundTint="#1261A0"
+            app:fabCustomSize="48dp"
+            app:tint="#FFFFFF" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/gpxCreateToolbar"
+        android:layout_width="64dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:background="@android:color/transparent"
+        android:orientation="vertical"
+        android:padding="4dp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/mapView"
+        app:layout_constraintStart_toStartOf="@id/mapView"
+        app:layout_constraintTop_toTopOf="@id/mapView">
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/createAddPointButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:alpha="0.86"
+            android:contentDescription="Aggiungi punto"
+            android:src="@drawable/ic_edit_add_route"
+            app:backgroundTint="#1261A0"
+            app:fabCustomSize="48dp"
+            app:tint="#FFFFFF" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/createUndoButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginTop="10dp"
+            android:alpha="0.86"
+            android:contentDescription="Annulla ultimo punto"
+            android:src="@drawable/ic_create_undo"
+            app:backgroundTint="#1261A0"
+            app:fabCustomSize="48dp"
+            app:tint="#FFFFFF" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/createSaveButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginTop="10dp"
+            android:alpha="0.86"
+            android:contentDescription="Salva nuova traccia"
+            android:src="@drawable/ic_create_save"
+            app:backgroundTint="#1261A0"
+            app:fabCustomSize="48dp"
+            app:tint="#FFFFFF" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/createCloseButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginTop="14dp"
+            android:alpha="0.86"
+            android:contentDescription="Annulla creazione"
+            android:src="@drawable/ic_edit_done"
+            app:backgroundTint="#1261A0"
+            app:fabCustomSize="48dp"
+            app:tint="#FFFFFF" />
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/gpxEditPointer"
+        android:layout_width="52dp"
+        android:layout_height="52dp"
+        android:contentDescription="Puntatore modifica GPX"
+        android:src="@drawable/ic_gpx_edit_pointer"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/mapView"
+        app:layout_constraintEnd_toEndOf="@id/mapView"
+        app:layout_constraintStart_toStartOf="@id/mapView"
+        app:layout_constraintTop_toTopOf="@id/mapView" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/confirmEditPointButton"
+        android:layout_width="wrap_content"
+        android:layout_height="52dp"
+        android:layout_marginBottom="110dp"
+        android:text="CONFERMA PUNTO"
+        android:textStyle="bold"
+        android:visibility="gone"
+        app:backgroundTint="#005BBB"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/cancelEditPointButton"
+        android:layout_width="wrap_content"
+        android:layout_height="44dp"
+        android:layout_marginBottom="62dp"
+        android:text="ANNULLA MODIFICA"
+        android:visibility="gone"
+        app:backgroundTint="#455A64"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/simulationPanel"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="18dp"
+        android:layout_marginEnd="18dp"
+        android:layout_marginBottom="158dp"
+        android:visibility="gone"
+        app:cardBackgroundColor="#E6003A78"
+        app:cardCornerRadius="18dp"
+        app:strokeColor="#4CA3FF"
+        app:strokeWidth="1dp"
+        app:layout_constraintBottom_toBottomOf="@id/mapView"
+        app:layout_constraintStart_toStartOf="@id/mapView"
+        app:layout_constraintEnd_toEndOf="@id/mapView">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="10dp">
+
+            <TextView
+                android:id="@+id/simulationStatusText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="SIMULAZIONE  1×"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:paddingBottom="6dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/simulationPauseButton"
+                    android:layout_width="0dp"
+                    android:layout_height="42dp"
+                    android:layout_weight="1.35"
+                    android:minWidth="0dp"
+                    android:text="Pausa"
+                    android:textSize="11sp"
+                    app:backgroundTint="#1261A0" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/simulationSpeed1Button"
+                    android:layout_width="0dp"
+                    android:layout_height="42dp"
+                    android:layout_weight="0.8"
+                    android:minWidth="0dp"
+                    android:text="1×"
+                    android:textSize="11sp"
+                    app:backgroundTint="#FFD21F"
+                    android:textColor="#17202A" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/simulationSpeed2Button"
+                    android:layout_width="0dp"
+                    android:layout_height="42dp"
+                    android:layout_weight="0.8"
+                    android:minWidth="0dp"
+                    android:text="2×"
+                    android:textSize="11sp"
+                    app:backgroundTint="#1261A0" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/simulationSpeed5Button"
+                    android:layout_width="0dp"
+                    android:layout_height="42dp"
+                    android:layout_weight="0.8"
+                    android:minWidth="0dp"
+                    android:text="5×"
+                    android:textSize="11sp"
+                    app:backgroundTint="#1261A0" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/simulationSpeed10Button"
+                    android:layout_width="0dp"
+                    android:layout_height="42dp"
+                    android:layout_weight="0.9"
+                    android:minWidth="0dp"
+                    android:text="10×"
+                    android:textSize="11sp"
+                    app:backgroundTint="#1261A0" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/simulationStopButton"
+                    android:layout_width="0dp"
+                    android:layout_height="42dp"
+                    android:layout_weight="1.0"
+                    android:minWidth="0dp"
+                    android:text="Stop"
+                    android:textSize="11sp"
+                    app:backgroundTint="#D32F2F" />
+            </LinearLayout>
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/importGpxButton"
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:visibility="gone" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

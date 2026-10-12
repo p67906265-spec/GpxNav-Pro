@@ -1,0 +1,18 @@
+CORREZIONI INSERITE
+
+- Pannelli INIZIO e FINE con altezza identica.
+- Nuovo pannello velocità sotto INIZIO, aggiornato dal GPS in km/h.
+- Freccia GPS più alta, leggermente più grande e più appuntita, con bordo bianco.
+- Zoom di navigazione più vicino e dinamico in base alla velocità.
+- Trascinando la mappa viene disattivato il seguito GPS.
+- Il pulsante GPS riattiva centratura, rotazione e zoom automatici.
+- Menu laterale blu a scorrimento da sinistra.
+- Elenco GPX direttamente nel menu laterale; tocco per aprire, pressione lunga per aspetto traccia.
+- Rimossa la barra blu permanente in basso per lasciare più spazio alla mappa.
+- Aggiunto livello per i nomi delle strade, quando presenti nei dati della mappa.
+- Avviso quando una parte della traccia GPX esce dall'area della mappa offline FVG installata.
+
+NOTA BUILD
+Il controllo Gradle non è stato completato nel sistema di modifica perché il wrapper richiede il download
+online di Gradle 8.13 e la rete del sistema non è disponibile. Aprire il progetto in Android Studio e avviare
+la normale sincronizzazione/build.
