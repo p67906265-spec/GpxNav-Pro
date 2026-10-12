@@ -2248,8 +2248,9 @@ class MainActivity : AppCompatActivity(), LocationListener {
             arrayOf("Usa mappa online", "Importa mappa offline")
         }
         val dialog = AlertDialog.Builder(this)
-            .setTitle("Mappe")
-            .setMessage("Modalità attuale: $modeText\nMappa offline: $offlineText")
+            // NB: con setMessage() Android nasconde la lista di setItems(),
+            // quindi lo stato va nel titolo.
+            .setTitle("Mappe\n$modeText · offline: $offlineText")
             .setItems(actions) { _, which ->
                 if (mapFile.exists()) {
                     when (which) {
