@@ -69,7 +69,8 @@
                 <data android:host="*" android:pathPattern=".*\\.gpx" />
             </intent-filter>
 
-            <!-- Compatibilità con file manager che usano application/octet-stream -->
+            <!-- File GPX ricevuti come application/octet-stream (es. WhatsApp li rinomina .bin):
+                 niente pathPattern, il contenuto viene validato dal parser GPX -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -78,7 +79,6 @@
                 <data android:scheme="content" />
                 <data android:scheme="file" />
                 <data android:mimeType="application/octet-stream" />
-                <data android:host="*" android:pathPattern=".*\\.gpx" />
             </intent-filter>
 
         </activity>
@@ -94,7 +94,7 @@
             android:foregroundServiceType="dataSync" />
 
         <provider
-            android:name="androidx.core.content.FileProvider"
+            android:name=".GpxFileProvider"
             android:authorities="${applicationId}.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">

@@ -2188,15 +2188,20 @@ class MainActivity : AppCompatActivity(), LocationListener {
 
     private fun shareGpx(file: File) {
         runCatching {
+            // Il nome esposto al destinatario deve restare .gpx e il provider
+            // restituisce application/gpx+xml anche sui dispositivi che non
+            // hanno una mappatura MIME predefinita per questa estensione.
             val uri = FileProvider.getUriForFile(
                 this,
                 "$packageName.fileprovider",
-                file
+                file,
+                file.name
             )
             val shareIntent = Intent(Intent.ACTION_SEND).apply {
                 type = "application/gpx+xml"
                 putExtra(Intent.EXTRA_STREAM, uri)
                 putExtra(Intent.EXTRA_SUBJECT, file.nameWithoutExtension)
+                clipData = android.content.ClipData.newUri(contentResolver, file.name, uri)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
             startActivity(Intent.createChooser(shareIntent, "Condividi GPX"))

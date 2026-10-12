@@ -100,9 +100,14 @@ class ImportService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun importGpx(uri: Uri): ImportServiceResult {
-        val displayName = queryDisplayName(uri) ?: "percorso.gpx"
-        require(displayName.endsWith(".gpx", ignoreCase = true)) {
-            "Seleziona un file con estensione .gpx"
+        // Alcune app (es. WhatsApp) consegnano il GPX con estensione .bin o senza estensione:
+        // si accetta qualsiasi nome e si normalizza in .gpx. La validità vera del file
+        // è verificata dal parser GPX più sotto, prima di rendere permanente la copia.
+        val rawName = queryDisplayName(uri)?.takeIf { it.isNotBlank() } ?: "percorso.gpx"
+        val displayName = if (rawName.endsWith(".gpx", ignoreCase = true)) {
+            rawName
+        } else {
+            rawName.substringBeforeLast('.', rawName) + ".gpx"
         }
 
         val directory = File(getExternalFilesDir(null) ?: filesDir, "gpx").apply { mkdirs() }
