@@ -2952,9 +2952,17 @@ class MainActivity : AppCompatActivity(), LocationListener {
     private fun updateRouteHeader(route: GpxRoute) {
         binding.routeNameText.text =
             activeRouteFile?.nameWithoutExtension ?: route.name
-        currentRouteProgressMeters = lastLocation
-            ?.let { navigationEngine.match(it)?.progressMeters }
-            ?: 0.0
+        // Fuori dalla navigazione il progresso parte sempre da 0: agganciare la
+        // posizione alla traccia al caricamento dava km invertiti (INIZIO = totale,
+        // FINE = 0) quando il telefono era più vicino al tratto finale che all'inizio.
+        if (isNavigationActive) {
+            currentRouteProgressMeters = lastLocation
+                ?.let { navigationEngine.match(it)?.progressMeters }
+                ?: 0.0
+        } else {
+            navigationEngine.resetProgress()
+            currentRouteProgressMeters = 0.0
+        }
         tripResetOffsetMeters = 0.0
         updateDistancePanels()
     }
