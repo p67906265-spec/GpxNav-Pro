@@ -879,7 +879,11 @@ class MainActivity : AppCompatActivity(), LocationListener {
                 binding.startNavigationButton.text = "STOP"
                 mapLibreMap?.style?.let { drawApproachRoute(it, approachRoute) }
                 lastLocation?.let(::updateApproachNavigation)
-                Toast.makeText(this, "Percorso verso la partenza calcolato", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this,
+                    "Partenza a ${formatNavigationDistance(approachRoute.distanceMeters)}",
+                    Toast.LENGTH_LONG
+                ).show()
             }.onFailure { error ->
                 isNavigationActive = false
                 applyKeepScreenOnPreference()
@@ -927,9 +931,10 @@ class MainActivity : AppCompatActivity(), LocationListener {
         val nextTurn = turnInstructionEngine.next(fix.progressMeters)
         binding.turnText.text = if (nextTurn != null) {
             val distance = (nextTurn.progressMeters - fix.progressMeters).coerceAtLeast(0.0)
-            "${nextTurn.symbol}  ${nextTurn.label}\n${formatNavigationDistance(distance)}"
+            "${nextTurn.symbol}  ${nextTurn.label}\n${formatNavigationDistance(distance)}\n" +
+                "Partenza tra ${formatNavigationDistance(fix.remainingMeters)}"
         } else {
-            "↑  PROSEGUI VERSO LA PARTENZA\n${formatNavigationDistance(fix.remainingMeters)}"
+            "↑  PROSEGUI VERSO LA PARTENZA\nPartenza tra ${formatNavigationDistance(fix.remainingMeters)}"
         }
         binding.turnPanel.visibility = View.VISIBLE
     }
