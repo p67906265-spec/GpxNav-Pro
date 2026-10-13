@@ -250,10 +250,28 @@ class MainActivity : AppCompatActivity(), LocationListener {
         bRouterClient = BRouterClient(this)
         applyKeepScreenOnPreference()
         updateRecenterButtonColor()
+        binding.drawerTitleText.text = android.text.SpannableString("GPX NAV PRO").apply {
+            setSpan(
+                android.text.style.ForegroundColorSpan(android.graphics.Color.parseColor("#FF9F1C")),
+                8, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+        }
 
         binding.recenterButton.setOnClickListener {
-            setFollowGps(true)
-            lastLocation?.let { centerOnLocation(it, animated = true) }
+            val routeStart = activeRoute?.points?.firstOrNull()
+            if (followGps && routeStart != null) {
+                // Già centrata sulla posizione: il secondo tocco va all'inizio traccia.
+                goToRouteStart(routeStart.latitude, routeStart.longitude)
+            } else {
+                // Mappa non centrata: il tocco riporta sulla posizione.
+                setFollowGps(true)
+                val location = lastLocation
+                if (location != null) {
+                    centerOnLocation(location, animated = true)
+                } else {
+                    Toast.makeText(this, "Posizione GPS non ancora disponibile", Toast.LENGTH_SHORT).show()
+                }
+            }
         }
         binding.startNavigationButton.setOnClickListener {
             toggleNavigation()
@@ -1327,7 +1345,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
         val opening = content.visibility != View.VISIBLE
         content.visibility = if (opening) View.VISIBLE else View.GONE
         header.setCompoundDrawablesRelativeWithIntrinsicBounds(
-            startIconRes,
+            0,
             0,
             if (opening) R.drawable.ic_expand_less else R.drawable.ic_expand_more,
             0
@@ -4207,6 +4225,18 @@ class MainActivity : AppCompatActivity(), LocationListener {
             CameraUpdateFactory.newLatLngBounds(boundsBuilder.build(), 90),
             900
         )
+    }
+
+    private fun goToRouteStart(latitude: Double, longitude: Double) {
+        val map = mapLibreMap ?: return
+        setFollowGps(false)
+        val camera = CameraPosition.Builder()
+            .target(LatLng(latitude, longitude))
+            .zoom(map.cameraPosition.zoom.coerceAtLeast(14.5))
+            .bearing(0.0)
+            .tilt(0.0)
+            .build()
+        map.animateCamera(CameraUpdateFactory.newCameraPosition(camera), 800)
     }
 
     private fun setFollowGps(enabled: Boolean) {

@@ -411,7 +411,7 @@
         android:id="@+id/drawerPanel"
         android:layout_width="292dp"
         android:layout_height="0dp"
-        android:background="#062C58"
+        android:background="@drawable/bg_drawer_panel"
         android:elevation="18dp"
         android:fitsSystemWindows="true"
         android:orientation="vertical"
@@ -431,9 +431,20 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:letterSpacing="0.3"
+                android:text="— SYS · ONLINE"
+                android:textColor="#FF9F1C"
+                android:textSize="10sp" />
+
+            <TextView
+                android:id="@+id/drawerTitleText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:letterSpacing="0.16"
                 android:text="GPX NAV PRO"
-                android:textColor="#FFFFFF"
-                android:textSize="23sp"
+                android:textColor="#F4F6FA"
+                android:textSize="24sp"
                 android:textStyle="bold" />
 
             <TextView
@@ -441,15 +452,16 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
                 android:layout_marginBottom="5dp"
-                android:text="Navigazione GPX offline / online"
-                android:textColor="#A9D2FF"
-                android:textSize="12sp" />
+                android:letterSpacing="0.14"
+                android:text="NAVIGAZIONE GPX · OFFLINE / ONLINE"
+                android:textColor="#7C8696"
+                android:textSize="10.5sp" />
 
             <View
                 android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginBottom="10dp"
-                android:background="#1F5FA8" />
+                android:layout_height="2dp"
+                android:layout_marginBottom="14dp"
+                android:background="@drawable/bg_drawer_divider" />
         </LinearLayout>
 
         <ScrollView
@@ -473,15 +485,15 @@
                     android:layout_height="46dp"
                     android:layout_marginBottom="5dp"
                     android:background="@drawable/bg_drawer_section"
-                    android:drawableStart="@drawable/ic_route"
                     android:drawableEnd="@drawable/ic_expand_more"
                     android:drawablePadding="12dp"
                     android:gravity="center_vertical"
-                    android:paddingStart="12dp"
+                    android:paddingStart="16dp"
                     android:paddingEnd="12dp"
-                    android:text="TRACCIA GPX"
-                    android:textColor="#A9D2FF"
-                    android:textSize="15sp"
+                    android:text="01    TRACCIA GPX"
+                    android:textColor="#FFB14A"
+                    android:textSize="14sp"
+                    android:letterSpacing="0.2"
                     android:textStyle="bold" />
 
                 <LinearLayout
@@ -504,7 +516,7 @@
                         android:paddingStart="12dp"
                         android:paddingEnd="12dp"
                         android:text="Carica GPX"
-                        android:textColor="#FFFFFF"
+                        android:textColor="#D7DCE6"
                         android:textSize="15sp" />
 
                     <TextView
@@ -520,7 +532,7 @@
                         android:paddingStart="12dp"
                         android:paddingEnd="12dp"
                         android:text="Modifica GPX"
-                        android:textColor="#FFFFFF"
+                        android:textColor="#D7DCE6"
                         android:textSize="15sp" />
 
                     <TextView
@@ -536,7 +548,7 @@
                         android:paddingStart="12dp"
                         android:paddingEnd="12dp"
                         android:text="Crea GPX"
-                        android:textColor="#FFFFFF"
+                        android:textColor="#D7DCE6"
                         android:textSize="15sp" />
                 </LinearLayout>
 
@@ -545,16 +557,16 @@
                     android:layout_width="match_parent"
                     android:layout_height="46dp"
                     android:layout_marginBottom="5dp"
-                    android:background="@drawable/bg_drawer_section"
-                    android:drawableStart="@drawable/ic_alert"
+                    android:background="@drawable/bg_drawer_section_green"
                     android:drawableEnd="@drawable/ic_expand_more"
                     android:drawablePadding="12dp"
                     android:gravity="center_vertical"
-                    android:paddingStart="12dp"
+                    android:paddingStart="16dp"
                     android:paddingEnd="12dp"
-                    android:text="GARA"
-                    android:textColor="#8FE0A5"
-                    android:textSize="15sp"
+                    android:text="02    GARA"
+                    android:textColor="#FFB14A"
+                    android:textSize="14sp"
+                    android:letterSpacing="0.2"
                     android:textStyle="bold" />
 
                 <LinearLayout
@@ -577,7 +589,7 @@
                         android:paddingStart="12dp"
                         android:paddingEnd="12dp"
                         android:text="Distanza preavviso"
-                        android:textColor="#FFFFFF"
+                        android:textColor="#D7DCE6"
                         android:textSize="15sp" />
 
                     <TextView
@@ -593,7 +605,7 @@
                         android:paddingStart="12dp"
                         android:paddingEnd="12dp"
                         android:text="Km avvisi"
-                        android:textColor="#FFFFFF"
+                        android:textColor="#D7DCE6"
                         android:textSize="15sp" />
 
                     <TextView
@@ -609,7 +621,7 @@
                         android:paddingStart="12dp"
                         android:paddingEnd="12dp"
                         android:text="Aspetto traccia"
-                        android:textColor="#FFFFFF"
+                        android:textColor="#D7DCE6"
                         android:textSize="15sp" />
                 </LinearLayout>
 
@@ -618,16 +630,16 @@
                     android:layout_width="match_parent"
                     android:layout_height="46dp"
                     android:layout_marginBottom="5dp"
-                    android:background="@drawable/bg_drawer_section"
-                    android:drawableStart="@drawable/ic_route_profile"
+                    android:background="@drawable/bg_drawer_section_blue"
                     android:drawableEnd="@drawable/ic_expand_more"
                     android:drawablePadding="12dp"
                     android:gravity="center_vertical"
-                    android:paddingStart="12dp"
+                    android:paddingStart="16dp"
                     android:paddingEnd="12dp"
-                    android:text="PERCORSI"
-                    android:textColor="#FFD067"
-                    android:textSize="15sp"
+                    android:text="03    PERCORSI"
+                    android:textColor="#FFB14A"
+                    android:textSize="14sp"
+                    android:letterSpacing="0.2"
                     android:textStyle="bold" />
 
                 <LinearLayout
@@ -651,15 +663,15 @@
                     android:layout_height="46dp"
                     android:layout_marginBottom="5dp"
                     android:background="@drawable/bg_drawer_section"
-                    android:drawableStart="@drawable/ic_settings"
                     android:drawableEnd="@drawable/ic_expand_more"
                     android:drawablePadding="12dp"
                     android:gravity="center_vertical"
-                    android:paddingStart="12dp"
+                    android:paddingStart="16dp"
                     android:paddingEnd="12dp"
-                    android:text="IMPOSTAZIONI"
-                    android:textColor="#C8B3FF"
-                    android:textSize="15sp"
+                    android:text="04    IMPOSTAZIONI"
+                    android:textColor="#FFB14A"
+                    android:textSize="14sp"
+                    android:letterSpacing="0.2"
                     android:textStyle="bold" />
 
                 <LinearLayout
@@ -667,7 +679,8 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:visibility="gone">
+                    android:visibility="gone"
+                    android:paddingStart="12dp">
 
                     <TextView
                         android:id="@+id/offlineMapDrawerButton"
@@ -682,7 +695,7 @@
                         android:paddingStart="12dp"
                         android:paddingEnd="12dp"
                         android:text="Mappe online / offline"
-                        android:textColor="#FFFFFF"
+                        android:textColor="#D7DCE6"
                         android:textSize="15sp" />
 
                     <TextView
@@ -697,7 +710,7 @@
                         android:paddingStart="12dp"
                         android:paddingEnd="12dp"
                         android:text="Schermo acceso in navigazione: Sì"
-                        android:textColor="#FFFFFF"
+                        android:textColor="#D7DCE6"
                         android:textSize="15sp" />
 
                     <TextView
@@ -712,7 +725,7 @@
                         android:paddingStart="12dp"
                         android:paddingEnd="12dp"
                         android:text="Km sulla traccia: Sì"
-                        android:textColor="#FFFFFF"
+                        android:textColor="#D7DCE6"
                         android:textSize="15sp" />
 
                     <TextView
@@ -728,7 +741,7 @@
                         android:paddingStart="12dp"
                         android:paddingEnd="12dp"
                         android:text="Profilo BRouter: Moto / auto rapido"
-                        android:textColor="#FFFFFF"
+                        android:textColor="#D7DCE6"
                         android:textSize="15sp" />
 
                     <TextView
@@ -744,7 +757,7 @@
                         android:paddingStart="12dp"
                         android:paddingEnd="12dp"
                         android:text="Guida comandi"
-                        android:textColor="#FFFFFF"
+                        android:textColor="#D7DCE6"
                         android:textSize="15sp" />
                 </LinearLayout>
 
@@ -753,9 +766,10 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     android:gravity="center"
-                    android:text="Paolo Free 1.0  •  v1.24.1"
-                    android:textColor="#9FCBFF"
-                    android:textSize="12sp" />
+                    android:text="PAOLO FREE 1.0  ·  V1.24.8"
+                    android:letterSpacing="0.2"
+                    android:textColor="#5B6472"
+                    android:textSize="10.5sp" />
             </LinearLayout>
         </ScrollView>
     </LinearLayout>
@@ -995,7 +1009,7 @@
                 android:layout_height="wrap_content"
                 android:gravity="center"
                 android:text="SIMULAZIONE  1×"
-                android:textColor="#FFFFFF"
+                android:textColor="#D7DCE6"
                 android:textSize="14sp"
                 android:textStyle="bold"
                 android:paddingBottom="6dp" />
