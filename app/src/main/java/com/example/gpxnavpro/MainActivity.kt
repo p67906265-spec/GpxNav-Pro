@@ -311,6 +311,9 @@ class MainActivity : AppCompatActivity(), LocationListener {
         binding.keepScreenOnDrawerButton.setOnClickListener {
             toggleKeepScreenOnPreference()
         }
+        binding.kilometersDrawerButton.setOnClickListener {
+            toggleKilometersPreference()
+        }
         binding.brouterProfileDrawerButton.setOnClickListener {
             closeDrawer()
             showBRouterProfileDialog()
@@ -1241,7 +1244,30 @@ class MainActivity : AppCompatActivity(), LocationListener {
         ).show()
     }
 
+    private fun showKilometersOnTrack(): Boolean =
+        getSharedPreferences(PREFS_DISPLAY, Context.MODE_PRIVATE)
+            .getBoolean(PREF_SHOW_KILOMETERS, true)
+
+    private fun toggleKilometersPreference() {
+        val enabled = !showKilometersOnTrack()
+        getSharedPreferences(PREFS_DISPLAY, Context.MODE_PRIVATE)
+            .edit().putBoolean(PREF_SHOW_KILOMETERS, enabled).apply()
+        updateDrawerPreferenceLabels()
+        activeRoute?.let { route ->
+            mapLibreMap?.style?.let { style ->
+                drawRoute(style, route, zoomToRoute = false, file = activeRouteFile)
+            }
+        }
+        Toast.makeText(
+            this,
+            if (enabled) "Km visibili sulla traccia" else "Km nascosti sulla traccia",
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+
     private fun updateDrawerPreferenceLabels() {
+        binding.kilometersDrawerButton.text =
+            "Km sulla traccia: ${if (showKilometersOnTrack()) "Sì" else "No"}"
         val keepScreenOn = getSharedPreferences(PREFS_DISPLAY, Context.MODE_PRIVATE)
             .getBoolean(PREF_KEEP_SCREEN_ON_NAVIGATION, true)
         binding.keepScreenOnDrawerButton.text =
@@ -3923,6 +3949,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
     }
 
     private fun drawKilometerMarkers(style: Style, route: GpxRoute) {
+        if (!showKilometersOnTrack()) return
         val kilometerCount = kotlin.math.floor(route.distanceMeters / 1000.0).toInt()
         if (kilometerCount < 1) return
 
@@ -5006,6 +5033,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
         private const val ONLINE_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
         private const val PREFS_DISPLAY = "display_settings"
         private const val PREF_KEEP_SCREEN_ON_NAVIGATION = "keep_screen_on_navigation"
+        private const val PREF_SHOW_KILOMETERS = "show_kilometers_on_track"
         private const val PREF_MANUAL_START_KM = "manual_start_km"
         private const val PREFS_MAP = "map_settings"
         private const val PREF_MAP_MODE = "map_mode"
