@@ -3,6 +3,11 @@ plugins {
     alias(libs.plugins.kotlin.android)
 }
 
+// Firebase (condivisione posizione tra moto): attivo solo se esiste app/google-services.json
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 android {
     namespace = "com.example.gpxnavpro"
     compileSdk = 36
@@ -12,8 +17,8 @@ android {
         minSdk = 24
         targetSdk = 36
 
-        versionCode = 40
-        versionName = "1.24.12"
+        versionCode = 42
+        versionName = "1.25.1"
 
         ndk {
             abiFilters += listOf("arm64-v8a")
@@ -78,6 +83,9 @@ kotlin {
 }
 
 dependencies {
+    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-database")
     implementation(libs.androidx.activity.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.constraintlayout)

@@ -111,6 +111,15 @@ class MainActivity : AppCompatActivity(), LocationListener {
         lookMeters = 25.0
     )
     private var routeTurnPanelVisible = false
+    private var buddyTracker: BuddyTracker? = null
+    private var buddyActive = false
+    private val buddyHandler = Handler(Looper.getMainLooper())
+    private val buddyTick = object : Runnable {
+        override fun run() {
+            refreshBuddyUi()
+            if (buddyActive) buddyHandler.postDelayed(this, 1000L)
+        }
+    }
     private var overlayRoute: GpxRoute? = null
     private var overlayCumulative = DoubleArray(0)
     private var lastAheadOverlayProgress = Double.NEGATIVE_INFINITY
@@ -342,6 +351,11 @@ class MainActivity : AppCompatActivity(), LocationListener {
         binding.kilometersDrawerButton.setOnClickListener {
             toggleKilometersPreference()
         }
+        binding.buddyDrawerButton.setOnClickListener {
+            closeDrawer()
+            showBuddyDialog()
+        }
+        restoreBuddySharing()
         binding.brouterProfileDrawerButton.setOnClickListener {
             closeDrawer()
             showBRouterProfileDialog()
@@ -1301,6 +1315,8 @@ class MainActivity : AppCompatActivity(), LocationListener {
     private fun updateDrawerPreferenceLabels() {
         binding.kilometersDrawerButton.text =
             "Km sulla traccia: ${if (showKilometersOnTrack()) "Sì" else "No"}"
+        binding.buddyDrawerButton.text =
+            "Moto compagna: ${if (buddyActive) "Sì" else "No"}"
         val keepScreenOn = getSharedPreferences(PREFS_DISPLAY, Context.MODE_PRIVATE)
             .getBoolean(PREF_KEEP_SCREEN_ON_NAVIGATION, true)
         binding.keepScreenOnDrawerButton.text =
@@ -4377,6 +4393,233 @@ class MainActivity : AppCompatActivity(), LocationListener {
         }
     }
 
+    // =========================================================
+    // MOTO COMPAGNA: posizione condivisa via Firebase, distanza calcolata sulla traccia
+    // =========================================================
+
+    private fun buddyPrefs() = getSharedPreferences(PREFS_BUDDY, Context.MODE_PRIVATE)
+
+    private fun restoreBuddySharing() {
+        if (buddyPrefs().getBoolean(PREF_BUDDY_ENABLED, false)) startBuddySharing(silent = true)
+    }
+
+    private fun startBuddySharing(silent: Boolean = false) {
+        val prefs = buddyPrefs()
+        val tracker = buddyTracker ?: BuddyTracker(applicationContext) { runOnUiThread { refreshBuddyUi() } }
+            .also { buddyTracker = it }
+        if (!tracker.isAvailable) {
+            if (!silent) Toast.makeText(this, "Funzione non configurata: manca google-services.json", Toast.LENGTH_LONG).show()
+            buddyPrefs().edit().putBoolean(PREF_BUDDY_ENABLED, false).apply()
+            return
+        }
+        tracker.start(
+            prefs.getString(PREF_BUDDY_CODE, "") ?: "",
+            "Moto ${prefs.getInt(PREF_BUDDY_ROLE, 1)}"
+        ) { message ->
+            runOnUiThread { Toast.makeText(this, message, Toast.LENGTH_LONG).show() }
+        }
+        buddyActive = tracker.isRunning
+        prefs.edit().putBoolean(PREF_BUDDY_ENABLED, buddyActive).apply()
+        buddyHandler.removeCallbacks(buddyTick)
+        if (buddyActive) buddyHandler.post(buddyTick)
+        updateDrawerPreferenceLabels()
+    }
+
+    private fun stopBuddySharing() {
+        buddyActive = false
+        buddyHandler.removeCallbacks(buddyTick)
+        buddyTracker?.stop(removeOwn = true)
+        buddyPrefs().edit().putBoolean(PREF_BUDDY_ENABLED, false).apply()
+        binding.buddyPanel.visibility = View.GONE
+        mapLibreMap?.style?.let { style ->
+            if (style.getLayer(BUDDY_LAYER_ID) != null) style.removeLayer(BUDDY_LAYER_ID)
+            if (style.getSource(BUDDY_SOURCE_ID) != null) style.removeSource(BUDDY_SOURCE_ID)
+        }
+        updateDrawerPreferenceLabels()
+    }
+
+    private fun showBuddyDialog() {
+        val prefs = buddyPrefs()
+        val density = resources.displayMetrics.density
+        val pad = (16 * density).toInt()
+        fun label(text: String) = TextView(this).apply {
+            this.text = text
+            setTextColor(android.graphics.Color.parseColor("#9FB4CC"))
+            textSize = 12f
+            setPadding(0, (10 * density).toInt(), 0, 0)
+        }
+        fun field(hint: String, value: String, numeric: Boolean = false) = EditText(this).apply {
+            this.hint = hint
+            setText(value)
+            setTextColor(android.graphics.Color.WHITE)
+            setHintTextColor(android.graphics.Color.parseColor("#9FB4CC"))
+            setSingleLine(true)
+            if (numeric) inputType = android.text.InputType.TYPE_CLASS_NUMBER or
+                android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+        }
+        val codeField = field("Codice gruppo (6-32 caratteri)", prefs.getString(PREF_BUDDY_CODE, "") ?: "")
+        val roleGroup = android.widget.RadioGroup(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val moto1 = android.widget.RadioButton(this).apply {
+            id = View.generateViewId(); text = "Moto 1"
+            setTextColor(android.graphics.Color.WHITE)
+        }
+        val moto2 = android.widget.RadioButton(this).apply {
+            id = View.generateViewId(); text = "Moto 2"
+            setTextColor(android.graphics.Color.WHITE)
+        }
+        roleGroup.addView(moto1)
+        roleGroup.addView(moto2)
+        roleGroup.check(if (prefs.getInt(PREF_BUDDY_ROLE, 1) == 2) moto2.id else moto1.id)
+        val distanceField = field(
+            "Distanza (km)",
+            formatKmInput(prefs.getFloat(PREF_BUDDY_TARGET_KM, 3.0f).toDouble()), numeric = true
+        )
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(pad, pad / 2, pad, 0)
+            addView(codeField)
+            addView(label("Questa è la moto"))
+            addView(roleGroup)
+            addView(label("Distanza tra le moto: verde se sufficiente, rosso se sotto"))
+            addView(distanceField)
+        }
+        val builder = AlertDialog.Builder(this)
+            .setTitle("Moto compagna")
+            .setView(content)
+            .setPositiveButton(if (buddyActive) "Aggiorna" else "Attiva", null)
+            .setNegativeButton("Annulla", null)
+        if (buddyActive) builder.setNeutralButton("Ferma", null)
+        val dialog = builder.create()
+        dialog.setOnShowListener {
+            styleBlueDialog(dialog)
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val code = codeField.text.toString()
+                if (BuddyTracker.sanitizeGroupCode(code) == null) {
+                    codeField.error = "6-32 caratteri: lettere, numeri, - o _"
+                    return@setOnClickListener
+                }
+                val distance = distanceField.text.toString().replace(',', '.').toFloatOrNull()
+                if (distance == null || distance <= 0f) {
+                    distanceField.error = "Inserisci la distanza in km"
+                    return@setOnClickListener
+                }
+                prefs.edit()
+                    .putString(PREF_BUDDY_CODE, code.trim())
+                    .putInt(PREF_BUDDY_ROLE, if (roleGroup.checkedRadioButtonId == moto2.id) 2 else 1)
+                    .putFloat(PREF_BUDDY_TARGET_KM, distance)
+                    .apply()
+                startBuddySharing()
+                dialog.dismiss()
+            }
+            dialog.getButton(AlertDialog.BUTTON_NEUTRAL)?.setOnClickListener {
+                stopBuddySharing()
+                dialog.dismiss()
+            }
+        }
+        dialog.show()
+    }
+
+    private fun formatKmInput(value: Double): String =
+        String.format(java.util.Locale.ITALY, "%.1f", value)
+
+    private fun currentBuddyProgress(): Double =
+        if (activeRoute != null && ((isNavigationActive && !isApproachingStart) || isSimulationActive)) {
+            currentRouteProgressMeters
+        } else {
+            -1.0
+        }
+
+    private fun currentBuddyRouteKey(): String {
+        val route = activeRoute ?: return ""
+        return "${activeRouteFile?.name.orEmpty()}|${route.distanceMeters.toInt() / 10}"
+    }
+
+    private fun refreshBuddyUi() {
+        val tracker = buddyTracker
+        if (!buddyActive || tracker == null) return
+        val now = android.os.SystemClock.elapsedRealtime()
+
+        // Invio della posizione ogni 5 secondi, anche da fermo.
+        val me = lastLocation
+        val myProgress = currentBuddyProgress()
+        val myRouteKey = currentBuddyRouteKey()
+        if (me != null) {
+            tracker.publishIfDue(me.latitude, me.longitude, myProgress, myRouteKey)
+        }
+
+        val thresholdMeters = buddyPrefs().getFloat(PREF_BUDDY_TARGET_KM, 3.0f) * 1000.0
+        val green = android.graphics.Color.parseColor("#4ADE80")
+        val red = android.graphics.Color.parseColor("#FF5252")
+        val gray = android.graphics.Color.parseColor("#9AA0A6")
+        val white = android.graphics.Color.WHITE
+
+        val peers = tracker.peers
+        val text = android.text.SpannableStringBuilder()
+        if (peers.isEmpty()) {
+            text.append("In attesa dell'altra moto…")
+        }
+        peers.forEachIndexed { index, peer ->
+            val trackGap = if (myProgress >= 0.0 && peer.progressMeters >= 0.0 &&
+                myRouteKey.isNotEmpty() && peer.routeKey == myRouteKey
+            ) {
+                kotlin.math.abs(peer.progressMeters - myProgress)
+            } else {
+                null
+            }
+            val meters = trackGap ?: me?.let {
+                distanceMeters(it.latitude, it.longitude, peer.latitude, peer.longitude)
+            }
+            val stale = (now - peer.lastChangeElapsed) / 1000L > BUDDY_STALE_SECONDS
+            val line = if (meters == null) {
+                "${peer.name}: --"
+            } else {
+                "${peer.name}: ${if (trackGap == null) "≈ " else ""}${formatNavigationDistance(meters)}"
+            }
+            val color = when {
+                meters == null || stale -> gray
+                meters < thresholdMeters -> red
+                else -> green
+            }
+            if (index > 0) text.append("\n")
+            val start = text.length
+            text.append(line)
+            text.setSpan(
+                android.text.style.ForegroundColorSpan(color),
+                start, text.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+        }
+        binding.buddyText.setTextColor(white)
+        binding.buddyText.text = text
+        binding.buddyPanel.visibility = View.VISIBLE
+
+        updateBuddyMarkers(peers, now)
+    }
+
+    private fun updateBuddyMarkers(peers: List<BuddyPeer>, nowElapsed: Long) {
+        val style = mapLibreMap?.style ?: return
+        if (style.getSource(BUDDY_SOURCE_ID) == null) {
+            style.addSource(GeoJsonSource(BUDDY_SOURCE_ID))
+        }
+        if (style.getLayer(BUDDY_LAYER_ID) == null) {
+            style.addLayer(
+                CircleLayer(BUDDY_LAYER_ID, BUDDY_SOURCE_ID).withProperties(
+                    circleColor(get("color")),
+                    circleRadius(11f),
+                    circleStrokeColor("#FFFFFF"),
+                    circleStrokeWidth(3f)
+                )
+            )
+        }
+        val features = peers.map { peer ->
+            val stale = (nowElapsed - peer.lastChangeElapsed) / 1000L > BUDDY_STALE_SECONDS
+            Feature.fromGeometry(Point.fromLngLat(peer.longitude, peer.latitude)).also {
+                it.addStringProperty("color", if (stale) "#8A8F98" else "#E91E63")
+            }
+        }
+        style.getSourceAs<GeoJsonSource>(BUDDY_SOURCE_ID)
+            ?.setGeoJson(org.maplibre.geojson.FeatureCollection.fromFeatures(features))
+    }
+
     private fun removeRouteLayers(style: Style) {
         listOf(
             GPX_ROUTE_LAYER_ID,
@@ -5301,6 +5544,8 @@ class MainActivity : AppCompatActivity(), LocationListener {
     }
 
     override fun onDestroy() {
+        buddyHandler.removeCallbacks(buddyTick)
+        buddyTracker?.stop(removeOwn = false)
         if (::locationManager.isInitialized) {
             runCatching { locationManager.removeUpdates(this) }
         }
@@ -5351,6 +5596,16 @@ class MainActivity : AppCompatActivity(), LocationListener {
         private const val SIMULATION_LAYER_ID = "gpx-simulation-layer"
         private const val SIMULATION_TICK_MS = 250L
         private const val SIMULATION_BASE_SPEED_METERS_PER_SECOND = 16.6667
+        private const val PREFS_BUDDY = "buddy_prefs"
+        private const val PREF_BUDDY_ENABLED = "enabled"
+        private const val PREF_BUDDY_CODE = "code"
+        private const val PREF_BUDDY_ROLE = "role"
+        private const val PREF_BUDDY_TARGET_KM = "target_km"
+        private const val PREF_BUDDY_TOLERANCE_KM = "tolerance_km"
+        private const val BUDDY_SOURCE_ID = "buddy-source"
+        private const val BUDDY_LAYER_ID = "buddy-layer"
+        private const val BUDDY_STALE_SECONDS = 45L
+        private const val BUDDY_OFFLINE_SECONDS = 15L
         private const val GPX_ROUTE_SOURCE_ID = "gpx-route-source"
         private const val GPX_ROUTE_LAYER_ID = "gpx-route-layer"
         private const val GPX_AHEAD_SOURCE_ID = "gpx-ahead-source"

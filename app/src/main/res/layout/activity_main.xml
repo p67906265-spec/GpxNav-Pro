@@ -299,6 +299,34 @@
     </FrameLayout>
 
     <com.google.android.material.card.MaterialCardView
+        android:id="@+id/buddyPanel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="150dp"
+        android:visibility="gone"
+        app:cardBackgroundColor="#E60A1830"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="8dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <TextView
+            android:id="@+id/buddyText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:maxWidth="260dp"
+            android:paddingStart="14dp"
+            android:paddingTop="10dp"
+            android:paddingEnd="14dp"
+            android:paddingBottom="10dp"
+            android:textColor="#FFFFFF"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
         android:id="@+id/turnPanel"
         android:layout_width="260dp"
         android:layout_height="wrap_content"
@@ -729,6 +757,21 @@
                         android:textSize="15sp" />
 
                     <TextView
+                        android:id="@+id/buddyDrawerButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="46dp"
+                        android:layout_marginBottom="5dp"
+                        android:background="@drawable/bg_drawer_action"
+                        android:drawableStart="@drawable/ic_my_location"
+                        android:drawablePadding="12dp"
+                        android:gravity="center_vertical"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:text="Moto compagna: No"
+                        android:textColor="#D7DCE6"
+                        android:textSize="15sp" />
+
+                    <TextView
                         android:id="@+id/brouterProfileDrawerButton"
                         android:layout_width="match_parent"
                         android:layout_height="46dp"
@@ -766,7 +809,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     android:gravity="center"
-                    android:text="PAOLO FREE 1.0  ·  V1.24.12"
+                    android:text="PAOLO FREE 1.0  ·  V1.25.1"
                     android:letterSpacing="0.2"
                     android:textColor="#5B6472"
                     android:textSize="10.5sp" />
