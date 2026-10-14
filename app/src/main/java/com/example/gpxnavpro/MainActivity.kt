@@ -105,6 +105,16 @@ class MainActivity : AppCompatActivity(), LocationListener {
     private val routeAlertEngine = RouteAlertEngine()
     private val approachNavigationEngine = NavigationEngine()
     private val turnInstructionEngine = TurnInstructionEngine()
+    private val routeTurnEngine = TurnInstructionEngine(
+        minTurnAngleDegrees = 50.0,
+        minInstructionSpacingMeters = 60.0,
+        lookMeters = 25.0
+    )
+    private var routeTurnPanelVisible = false
+    private var overlayRoute: GpxRoute? = null
+    private var overlayCumulative = DoubleArray(0)
+    private var lastAheadOverlayProgress = Double.NEGATIVE_INFINITY
+    private var lastPassedOverlayProgress = Double.NEGATIVE_INFINITY
     private lateinit var bRouterClient: BRouterClient
     private var wasOffRoute = false
     private var isNavigationActive = false
@@ -2690,6 +2700,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
                     activeRouteFile = file
                     activeRoute = route
                     navigationEngine.setRoute(route)
+                    routeTurnEngine.setRoute(route)
                     routeAlertEngine.setRoute(route, loadManualAlertKilometers(route))
                     prepareNavigationForRoute()
                     restoreNavigationSessionIfNeeded(file)
@@ -2968,6 +2979,11 @@ class MainActivity : AppCompatActivity(), LocationListener {
     }
 
     private fun updateDistancePanels() {
+        updateDistancePanelsInternal()
+        updateNavigationGuidance()
+    }
+
+    private fun updateDistancePanelsInternal() {
         val route = activeRoute
         if (route == null) {
             binding.startDistanceText.text = formatDistancePanel(
@@ -4197,6 +4213,170 @@ class MainActivity : AppCompatActivity(), LocationListener {
         return ((Math.toDegrees(kotlin.math.atan2(y, x)) + 360.0) % 360.0).toFloat()
     }
 
+    // =========================================================
+    // GUIDA SULLA TRACCIA: tratto davanti evidenziato, tratto fatto in grigio,
+    // indicazione di svolta. Serve dove la traccia si incrocia o passa più volte
+    // dallo stesso punto.
+    // =========================================================
+
+    private fun updateNavigationGuidance() {
+        val route = activeRoute
+        val style = mapLibreMap?.style
+        val active = route != null && route.points.size >= 2 &&
+            ((isNavigationActive && !isApproachingStart) || isSimulationActive)
+
+        if (!active || route == null) {
+            if (style != null) clearRouteProgressOverlay(style)
+            hideRouteTurnPanel()
+            return
+        }
+        updateRouteProgressOverlay(style, route)
+        updateRouteTurnPanel()
+    }
+
+    private fun updateRouteTurnPanel() {
+        val progress = currentRouteProgressMeters
+        val next = routeTurnEngine.next(progress)
+        val distance = next?.let { it.progressMeters - progress }
+        if (next != null && distance != null && distance <= ROUTE_TURN_SHOW_METERS) {
+            binding.turnText.text =
+                "${next.symbol}  ${next.label}\n${formatNavigationDistance(distance.coerceAtLeast(0.0))}"
+            binding.turnPanel.visibility = View.VISIBLE
+            routeTurnPanelVisible = true
+        } else {
+            hideRouteTurnPanel()
+        }
+    }
+
+    private fun hideRouteTurnPanel() {
+        if (routeTurnPanelVisible) {
+            binding.turnPanel.visibility = View.GONE
+            routeTurnPanelVisible = false
+        }
+    }
+
+    private fun clearRouteProgressOverlay(style: Style) {
+        listOf(GPX_AHEAD_HALO_LAYER_ID, GPX_PASSED_LAYER_ID).forEach { id ->
+            if (style.getLayer(id) != null) style.removeLayer(id)
+        }
+        listOf(GPX_AHEAD_SOURCE_ID, GPX_PASSED_SOURCE_ID).forEach { id ->
+            if (style.getSource(id) != null) style.removeSource(id)
+        }
+        lastAheadOverlayProgress = Double.NEGATIVE_INFINITY
+        lastPassedOverlayProgress = Double.NEGATIVE_INFINITY
+    }
+
+    private fun ensureOverlayCumulative(route: GpxRoute) {
+        if (overlayRoute === route && overlayCumulative.size == route.points.size) return
+        val points = route.points
+        val cumulative = DoubleArray(points.size)
+        for (index in 1 until points.size) {
+            cumulative[index] = cumulative[index - 1] + distanceMeters(
+                points[index - 1].latitude, points[index - 1].longitude,
+                points[index].latitude, points[index].longitude
+            )
+        }
+        overlayCumulative = cumulative
+        overlayRoute = route
+        lastAheadOverlayProgress = Double.NEGATIVE_INFINITY
+        lastPassedOverlayProgress = Double.NEGATIVE_INFINITY
+    }
+
+    private fun overlayPointAt(route: GpxRoute, progress: Double): Point {
+        val points = route.points
+        val cumulative = overlayCumulative
+        if (progress <= 0.0) return Point.fromLngLat(points.first().longitude, points.first().latitude)
+        if (progress >= cumulative.last()) return Point.fromLngLat(points.last().longitude, points.last().latitude)
+        var index = java.util.Arrays.binarySearch(cumulative, progress)
+        if (index < 0) index = -index - 2
+        index = index.coerceIn(0, points.lastIndex - 1)
+        val segment = cumulative[index + 1] - cumulative[index]
+        val fraction = if (segment > 0.0) (progress - cumulative[index]) / segment else 0.0
+        val a = points[index]
+        val b = points[index + 1]
+        return Point.fromLngLat(
+            a.longitude + (b.longitude - a.longitude) * fraction,
+            a.latitude + (b.latitude - a.latitude) * fraction
+        )
+    }
+
+    private fun overlaySlice(route: GpxRoute, from: Double, to: Double, minSpacingMeters: Double): List<Point> {
+        if (to - from < 1.0) return emptyList()
+        val points = route.points
+        val cumulative = overlayCumulative
+        val result = ArrayList<Point>()
+        result += overlayPointAt(route, from)
+        var index = java.util.Arrays.binarySearch(cumulative, from)
+        index = if (index >= 0) index + 1 else -index - 1
+        var lastAdded = from
+        while (index < points.size && cumulative[index] < to) {
+            if (cumulative[index] - lastAdded >= minSpacingMeters) {
+                result += Point.fromLngLat(points[index].longitude, points[index].latitude)
+                lastAdded = cumulative[index]
+            }
+            index++
+        }
+        result += overlayPointAt(route, to)
+        return result
+    }
+
+    private fun setOverlayLine(style: Style, sourceId: String, line: List<Point>) {
+        val source = style.getSourceAs<GeoJsonSource>(sourceId) ?: return
+        if (line.size >= 2) {
+            source.setGeoJson(Feature.fromGeometry(LineString.fromLngLats(line)))
+        } else {
+            source.setGeoJson(org.maplibre.geojson.FeatureCollection.fromFeatures(emptyList<Feature>()))
+        }
+    }
+
+    private fun updateRouteProgressOverlay(style: Style?, route: GpxRoute) {
+        if (style == null) return
+        ensureOverlayCumulative(route)
+        if (style.getLayer(GPX_ROUTE_LAYER_ID) == null) return
+
+        if (style.getSource(GPX_AHEAD_SOURCE_ID) == null) {
+            val width = (activeRouteFile?.let { loadRouteAppearance(it) } ?: RouteAppearance()).width
+            style.addSource(GeoJsonSource(GPX_AHEAD_SOURCE_ID))
+            style.addSource(GeoJsonSource(GPX_PASSED_SOURCE_ID))
+            style.addLayerBelow(
+                LineLayer(GPX_AHEAD_HALO_LAYER_ID, GPX_AHEAD_SOURCE_ID).withProperties(
+                    lineColor("#FF9F1C"),
+                    lineWidth(width + 8f),
+                    lineOpacity(0.9f),
+                    lineCap(Property.LINE_CAP_ROUND),
+                    lineJoin(Property.LINE_JOIN_ROUND)
+                ),
+                GPX_ROUTE_LAYER_ID
+            )
+            style.addLayerAbove(
+                LineLayer(GPX_PASSED_LAYER_ID, GPX_PASSED_SOURCE_ID).withProperties(
+                    lineColor("#8A8F98"),
+                    lineWidth(width + 1f),
+                    lineOpacity(0.85f),
+                    lineCap(Property.LINE_CAP_ROUND),
+                    lineJoin(Property.LINE_JOIN_ROUND)
+                ),
+                GPX_ROUTE_LAYER_ID
+            )
+            lastAheadOverlayProgress = Double.NEGATIVE_INFINITY
+            lastPassedOverlayProgress = Double.NEGATIVE_INFINITY
+        }
+
+        val total = overlayCumulative.last()
+        val progress = currentRouteProgressMeters.coerceIn(0.0, total)
+        if (kotlin.math.abs(progress - lastAheadOverlayProgress) >= AHEAD_UPDATE_STEP_METERS) {
+            setOverlayLine(
+                style, GPX_AHEAD_SOURCE_ID,
+                overlaySlice(route, progress, minOf(total, progress + AHEAD_HIGHLIGHT_METERS), 0.0)
+            )
+            lastAheadOverlayProgress = progress
+        }
+        if (kotlin.math.abs(progress - lastPassedOverlayProgress) >= PASSED_UPDATE_STEP_METERS) {
+            setOverlayLine(style, GPX_PASSED_SOURCE_ID, overlaySlice(route, 0.0, progress, 10.0))
+            lastPassedOverlayProgress = progress
+        }
+    }
+
     private fun removeRouteLayers(style: Style) {
         listOf(
             GPX_ROUTE_LAYER_ID,
@@ -4208,10 +4388,17 @@ class MainActivity : AppCompatActivity(), LocationListener {
             GPX_ALERT_CONNECTORS_LAYER_ID,
             GPX_ALERT_CONNECTORS_OUTLINE_LAYER_ID,
             GPX_EDIT_SELECTION_LAYER_ID,
-            SIMULATION_LAYER_ID
+            SIMULATION_LAYER_ID,
+            GPX_AHEAD_HALO_LAYER_ID,
+            GPX_PASSED_LAYER_ID
         ).forEach { id ->
             if (style.getLayer(id) != null) style.removeLayer(id)
         }
+        listOf(GPX_AHEAD_SOURCE_ID, GPX_PASSED_SOURCE_ID).forEach { id ->
+            if (style.getSource(id) != null) style.removeSource(id)
+        }
+        lastAheadOverlayProgress = Double.NEGATIVE_INFINITY
+        lastPassedOverlayProgress = Double.NEGATIVE_INFINITY
         listOf(
             GPX_ROUTE_SOURCE_ID,
             GPX_ARROWS_SOURCE_ID,
@@ -4566,8 +4753,67 @@ class MainActivity : AppCompatActivity(), LocationListener {
      */
     private var missingSegmentDialog: AlertDialog? = null
 
+    private fun isBRouterInstalled(): Boolean = runCatching {
+        packageManager.getPackageInfo("btools.routingapp", 0)
+        true
+    }.getOrDefault(false)
+
+    private fun openBRouterInStore() {
+        val packageName = "btools.routingapp"
+        val opened = runCatching {
+            startActivity(
+                Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$packageName"))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+        }.isSuccess
+        if (!opened) {
+            runCatching {
+                startActivity(
+                    Intent(
+                        Intent.ACTION_VIEW,
+                        Uri.parse("https://play.google.com/store/apps/details?id=$packageName")
+                    ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+            }.onFailure {
+                Toast.makeText(this, "Impossibile aprire lo store", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private var brouterInstallDialog: AlertDialog? = null
+
+    private fun showInstallBRouterDialog() {
+        if (isFinishing || isDestroyed) return
+        if (brouterInstallDialog?.isShowing == true) return
+        val installed = isBRouterInstalled()
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(if (installed) "Aggiorna BRouter" else "BRouter non installato")
+            .setMessage(
+                if (installed) {
+                    "Il servizio di routing di BRouter non risponde. " +
+                        "Aggiorna BRouter all'ultima versione dallo store e riprova."
+                } else {
+                    "Per calcolare il percorso verso la partenza serve l'app BRouter.\n\n" +
+                        "Vuoi scaricarla dallo store? Dopo l'installazione apri BRouter e " +
+                        "scarica i dati della tua zona dal Download Manager."
+                }
+            )
+            .setPositiveButton("Apri lo store") { _, _ -> openBRouterInStore() }
+            .setNegativeButton("Chiudi", null)
+            .create()
+        dialog.setOnShowListener { styleBlueDialog(dialog) }
+        brouterInstallDialog = dialog
+        dialog.show()
+    }
+
     private fun showMissingBRouterSegmentDialogIfNeeded(error: Throwable): Boolean {
         val message = error.message ?: return false
+        if (message.contains("non è installato", ignoreCase = true) ||
+            message.contains("non ha fornito il servizio", ignoreCase = true)
+        ) {
+            showInstallBRouterDialog()
+            return true
+        }
         if (!message.contains("not found", ignoreCase = true)) return false
         val tiles = Regex("([EW]\\d+_[NS]\\d+)\\.rd5", RegexOption.IGNORE_CASE)
             .findAll(message)
@@ -5107,6 +5353,14 @@ class MainActivity : AppCompatActivity(), LocationListener {
         private const val SIMULATION_BASE_SPEED_METERS_PER_SECOND = 16.6667
         private const val GPX_ROUTE_SOURCE_ID = "gpx-route-source"
         private const val GPX_ROUTE_LAYER_ID = "gpx-route-layer"
+        private const val GPX_AHEAD_SOURCE_ID = "gpx-ahead-source"
+        private const val GPX_AHEAD_HALO_LAYER_ID = "gpx-ahead-halo-layer"
+        private const val GPX_PASSED_SOURCE_ID = "gpx-passed-source"
+        private const val GPX_PASSED_LAYER_ID = "gpx-passed-layer"
+        private const val AHEAD_HIGHLIGHT_METERS = 1000.0
+        private const val AHEAD_UPDATE_STEP_METERS = 15.0
+        private const val PASSED_UPDATE_STEP_METERS = 150.0
+        private const val ROUTE_TURN_SHOW_METERS = 600.0
         private const val GPX_EDIT_SELECTION_SOURCE_ID = "gpx-edit-selection-source"
         private const val GPX_EDIT_SELECTION_LAYER_ID = "gpx-edit-selection-layer"
         private const val GPX_CREATE_SOURCE_ID = "gpx-create-source"
