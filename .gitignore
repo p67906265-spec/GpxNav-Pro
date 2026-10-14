@@ -27,8 +27,7 @@ render.experimental.xml
 *.jks
 *.keystore
 
-# Google Services (e.g. APIs or Firebase)
-google-services.json
+# Google Services: app/google-services.json va nel repository (serve alla compilazione su GitHub)
 
 # Android Profiling
 *.hprof

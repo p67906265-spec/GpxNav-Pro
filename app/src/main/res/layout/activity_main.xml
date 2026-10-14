@@ -809,7 +809,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     android:gravity="center"
-                    android:text="PAOLO FREE 1.0  ·  V1.25.2"
+                    android:text="PAOLO FREE 1.0  ·  V1.25.3"
                     android:letterSpacing="0.2"
                     android:textColor="#5B6472"
                     android:textSize="10.5sp" />
