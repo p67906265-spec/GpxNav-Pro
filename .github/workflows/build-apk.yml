@@ -58,4 +58,4 @@ jobs:
           name: GpxNav-Pro-v${{ env.VERSION_NAME }}-release-firmato
           path: ${{ env.APK_NAME }}
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 3
