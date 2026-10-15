@@ -4571,9 +4571,9 @@ class MainActivity : AppCompatActivity(), LocationListener {
             }
             val stale = (now - peer.lastChangeElapsed) / 1000L > BUDDY_STALE_SECONDS
             val line = if (meters == null) {
-                "${peer.name}: --"
+                "--"
             } else {
-                "${peer.name}: ${if (trackGap == null) "≈ " else ""}${formatNavigationDistance(meters)}"
+                "${if (trackGap == null) "≈ " else ""}${formatNavigationDistance(meters)}"
             }
             val color = when {
                 meters == null || stale -> gray
