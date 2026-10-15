@@ -112,6 +112,11 @@ class MainActivity : AppCompatActivity(), LocationListener {
     )
     private var routeTurnPanelVisible = false
     private var buddyTracker: BuddyTracker? = null
+    private val mapDownloadReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            runOnUiThread { finalizeCompletedMapDownloads() }
+        }
+    }
     private var buddyActive = false
     private val buddyHandler = Handler(Looper.getMainLooper())
     private val buddyTick = object : Runnable {
@@ -356,6 +361,12 @@ class MainActivity : AppCompatActivity(), LocationListener {
             showBuddyDialog()
         }
         restoreBuddySharing()
+        androidx.core.content.ContextCompat.registerReceiver(
+            this,
+            mapDownloadReceiver,
+            android.content.IntentFilter(android.app.DownloadManager.ACTION_DOWNLOAD_COMPLETE),
+            androidx.core.content.ContextCompat.RECEIVER_EXPORTED
+        )
         binding.brouterProfileDrawerButton.setOnClickListener {
             closeDrawer()
             showBRouterProfileDialog()
@@ -2294,70 +2305,275 @@ class MainActivity : AppCompatActivity(), LocationListener {
     }
 
     private fun showOfflineMapActions() {
-        val mapFile = installedMapFile()
+        finalizeCompletedMapDownloads()
+        val maps = installedMaps()
+        val active = installedMapFile()
         val selectedMode = getSharedPreferences(PREFS_MAP, Context.MODE_PRIVATE)
             .getString(PREF_MAP_MODE, MAP_MODE_ONLINE)
-        val modeText = if (selectedMode == MAP_MODE_OFFLINE && mapFile.exists()) {
-            "Mappa offline"
-        } else {
-            "Mappa online"
+        val offlineActive = selectedMode == MAP_MODE_OFFLINE && active.exists()
+        val status = if (offlineActive) "Mappa offline: ${prettyMapName(active.name)}" else "Mappa online"
+        val pending = pendingMapDownloads().size
+
+        val labels = ArrayList<String>()
+        val actions = ArrayList<() -> Unit>()
+        labels += "Usa mappa online"
+        actions += {
+            saveMapMode(MAP_MODE_ONLINE)
+            loadInstalledMap()
         }
-        val offlineText = if (mapFile.exists()) {
-            String.format(
-                java.util.Locale.ITALY,
-                "%.1f MB installati",
-                mapFile.length() / (1024.0 * 1024.0)
-            )
-        } else {
-            "non installata"
+        maps.forEach { file ->
+            val mark = if (offlineActive && file.name == active.name) "✓ " else ""
+            labels += "$mark${prettyMapName(file.name)} · ${mapSizeText(file.length())}"
+            actions += { showInstalledMapOptions(file) }
         }
-        val actions = if (mapFile.exists()) {
-            arrayOf(
-                "Usa mappa online",
-                "Usa mappa offline",
-                "Importa o sostituisci",
-                "Salva una copia",
-                "Condividi"
-            )
-        } else {
-            arrayOf("Usa mappa online", "Importa mappa offline")
+        labels += "Scarica mappe…"
+        actions += { showDownloadableMaps() }
+        labels += "Importa da file"
+        actions += { mapPicker.launch(arrayOf("application/octet-stream", "*/*")) }
+
+        val title = buildString {
+            append("Mappe\n$status")
+            if (pending > 0) append(" · download in corso: $pending")
         }
         val dialog = AlertDialog.Builder(this)
             // NB: con setMessage() Android nasconde la lista di setItems(),
             // quindi lo stato va nel titolo.
-            .setTitle("Mappe\n$modeText · offline: $offlineText")
-            .setItems(actions) { _, which ->
-                if (mapFile.exists()) {
-                    when (which) {
-                        0 -> {
-                            saveMapMode(MAP_MODE_ONLINE)
-                            loadInstalledMap()
-                        }
-                        1 -> {
-                            saveMapMode(MAP_MODE_OFFLINE)
-                            loadInstalledMap()
-                        }
-                        2 -> mapPicker.launch(arrayOf("application/octet-stream", "*/*"))
-                        3 -> {
-                            pendingMapExportFile = mapFile
-                            exportMapLauncher.launch(mapFile.name)
-                        }
-                        4 -> shareOfflineMap(mapFile)
+            .setTitle(title)
+            .setItems(labels.toTypedArray()) { _, which -> actions[which]() }
+            .setNegativeButton("Chiudi", null)
+            .create()
+        dialog.setOnShowListener { styleBlueDialog(dialog) }
+        dialog.show()
+    }
+
+    private fun showInstalledMapOptions(file: File) {
+        val options = arrayOf("Usa questa mappa", "Salva una copia", "Condividi", "Elimina")
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("${prettyMapName(file.name)} · ${mapSizeText(file.length())}")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> {
+                        saveActiveMap(file.name)
+                        saveMapMode(MAP_MODE_OFFLINE)
+                        loadInstalledMap()
                     }
-                } else {
-                    when (which) {
-                        0 -> {
-                            saveMapMode(MAP_MODE_ONLINE)
-                            loadInstalledMap()
-                        }
-                        1 -> mapPicker.launch(arrayOf("application/octet-stream", "*/*"))
+                    1 -> {
+                        pendingMapExportFile = file
+                        exportMapLauncher.launch(file.name)
                     }
+                    2 -> shareOfflineMap(file)
+                    3 -> confirmDeleteMap(file)
                 }
             }
             .setNegativeButton("Chiudi", null)
             .create()
         dialog.setOnShowListener { styleBlueDialog(dialog) }
         dialog.show()
+    }
+
+    private fun confirmDeleteMap(file: File) {
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Eliminare la mappa?")
+            .setMessage("${prettyMapName(file.name)} verrà cancellata dal telefono. Potrai scaricarla di nuovo.")
+            .setPositiveButton("Elimina") { _, _ ->
+                val wasActive = file.name == activeMapName()
+                file.delete()
+                if (wasActive) loadInstalledMap()
+                Toast.makeText(this, "Mappa eliminata", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Annulla", null)
+            .create()
+        dialog.setOnShowListener { styleBlueDialog(dialog) }
+        dialog.show()
+    }
+
+    // =========================================================
+    // DOWNLOAD MAPPE DA GITHUB (release del repository GpxNav-Maps)
+    // =========================================================
+
+    private data class RemoteMap(val name: String, val sizeBytes: Long, val url: String)
+
+    private fun fetchRemoteMaps(): List<RemoteMap> {
+        val connection = java.net.URL(MAPS_RELEASES_API).openConnection() as java.net.HttpURLConnection
+        connection.connectTimeout = 15_000
+        connection.readTimeout = 20_000
+        connection.setRequestProperty("Accept", "application/vnd.github+json")
+        connection.setRequestProperty("User-Agent", "GpxNavPro")
+        try {
+            if (connection.responseCode != 200) {
+                error("GitHub ha risposto ${connection.responseCode}")
+            }
+            val text = connection.inputStream.bufferedReader().use { it.readText() }
+            val releases = org.json.JSONArray(text)
+            val result = ArrayList<RemoteMap>()
+            for (i in 0 until releases.length()) {
+                val assets = releases.getJSONObject(i).optJSONArray("assets") ?: continue
+                for (j in 0 until assets.length()) {
+                    val asset = assets.getJSONObject(j)
+                    val name = asset.getString("name")
+                    if (name.endsWith(".pmtiles", ignoreCase = true)) {
+                        result += RemoteMap(
+                            name = name.replace(Regex("[^A-Za-z0-9._-]"), "_"),
+                            sizeBytes = asset.optLong("size"),
+                            url = asset.getString("browser_download_url")
+                        )
+                    }
+                }
+            }
+            return result.distinctBy { it.name }.sortedBy { it.name.lowercase() }
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun showDownloadableMaps() {
+        Toast.makeText(this, "Cerco le mappe disponibili…", Toast.LENGTH_SHORT).show()
+        Thread {
+            val result = runCatching { fetchRemoteMaps() }
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                result.onFailure {
+                    Toast.makeText(
+                        this,
+                        "Impossibile leggere l'elenco mappe: ${it.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+                result.onSuccess { maps ->
+                    if (maps.isEmpty()) {
+                        val dialog = AlertDialog.Builder(this)
+                            .setTitle("Nessuna mappa trovata")
+                            .setMessage(
+                                "Nella release di GpxNav-Maps non ci sono file .pmtiles pubblicati. " +
+                                    "Controlla che la release sia pubblicata e non in bozza."
+                            )
+                            .setPositiveButton("Chiudi", null)
+                            .create()
+                        dialog.setOnShowListener { styleBlueDialog(dialog) }
+                        dialog.show()
+                        return@onSuccess
+                    }
+                    val installedNames = installedMaps().map { it.name }.toSet()
+                    val labels = maps.map { map ->
+                        val tag = if (map.name in installedNames) " (già installata)" else ""
+                        "${prettyMapName(map.name)} · ${mapSizeText(map.sizeBytes)}$tag"
+                    }.toTypedArray()
+                    val dialog = AlertDialog.Builder(this)
+                        .setTitle("Scarica mappa")
+                        .setItems(labels) { _, which -> confirmMapDownload(maps[which]) }
+                        .setNegativeButton("Chiudi", null)
+                        .create()
+                    dialog.setOnShowListener { styleBlueDialog(dialog) }
+                    dialog.show()
+                }
+            }
+        }.start()
+    }
+
+    private fun confirmMapDownload(map: RemoteMap) {
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Scaricare ${prettyMapName(map.name)}?")
+            .setMessage(
+                "Il file pesa ${mapSizeText(map.sizeBytes)}. Meglio con il Wi-Fi. " +
+                    "Il download continua anche se chiudi l'app e a fine scarico la mappa si attiva da sola."
+            )
+            .setPositiveButton("Scarica") { _, _ -> startMapDownload(map) }
+            .setNegativeButton("Annulla", null)
+            .create()
+        dialog.setOnShowListener { styleBlueDialog(dialog) }
+        dialog.show()
+    }
+
+    private fun pendingMapDownloads(): MutableSet<String> =
+        (getSharedPreferences(PREFS_MAP, Context.MODE_PRIVATE)
+            .getStringSet(PREF_PENDING_DOWNLOADS, emptySet()) ?: emptySet()).toMutableSet()
+
+    private fun savePendingMapDownloads(entries: Set<String>) {
+        getSharedPreferences(PREFS_MAP, Context.MODE_PRIVATE)
+            .edit().putStringSet(PREF_PENDING_DOWNLOADS, entries).apply()
+    }
+
+    private fun startMapDownload(map: RemoteMap) {
+        runCatching {
+            val manager = getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
+            val tempName = "${map.name}.download"
+            File(mapsDirectory(), tempName).delete()
+            val request = android.app.DownloadManager.Request(Uri.parse(map.url))
+                .setTitle("Mappa ${prettyMapName(map.name)}")
+                .setDescription("GpxNav Pro")
+                .setNotificationVisibility(
+                    android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED
+                )
+                .setDestinationInExternalFilesDir(this, null, "maps/$tempName")
+            val id = manager.enqueue(request)
+            val pending = pendingMapDownloads()
+            pending += "$id|${map.name}"
+            savePendingMapDownloads(pending)
+            Toast.makeText(
+                this,
+                "Download avviato: lo vedi nelle notifiche",
+                Toast.LENGTH_LONG
+            ).show()
+        }.onFailure {
+            Toast.makeText(this, "Download non avviato: ${it.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    /** Controlla i download finiti: valida il file, lo rinomina e attiva la mappa. */
+    private fun finalizeCompletedMapDownloads() {
+        val pending = pendingMapDownloads()
+        if (pending.isEmpty()) return
+        val manager = getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
+        var changed = false
+        for (entry in pending.toList()) {
+            val id = entry.substringBefore('|').toLongOrNull()
+            val finalName = entry.substringAfter('|', "")
+            if (id == null || finalName.isEmpty()) {
+                pending.remove(entry); changed = true; continue
+            }
+            val cursor = manager.query(android.app.DownloadManager.Query().setFilterById(id))
+            val status = cursor.use {
+                if (it != null && it.moveToFirst()) {
+                    it.getInt(it.getColumnIndexOrThrow(android.app.DownloadManager.COLUMN_STATUS))
+                } else {
+                    -1
+                }
+            }
+            val temp = File(mapsDirectory(), "$finalName.download")
+            when (status) {
+                android.app.DownloadManager.STATUS_SUCCESSFUL -> {
+                    pending.remove(entry); changed = true
+                    val valid = runCatching { PmtilesHeaderReader.read(temp) }.isSuccess
+                    if (valid) {
+                        val target = File(mapsDirectory(), finalName)
+                        target.delete()
+                        if (temp.renameTo(target)) {
+                            saveActiveMap(finalName)
+                            saveMapMode(MAP_MODE_OFFLINE)
+                            if (mapLibreMap != null) loadInstalledMap()
+                            Toast.makeText(
+                                this,
+                                "Mappa ${prettyMapName(finalName)} scaricata e attivata",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        } else {
+                            Toast.makeText(this, "Impossibile salvare la mappa scaricata", Toast.LENGTH_LONG).show()
+                        }
+                    } else {
+                        temp.delete()
+                        Toast.makeText(this, "Il file scaricato non è una mappa valida", Toast.LENGTH_LONG).show()
+                    }
+                }
+                android.app.DownloadManager.STATUS_FAILED, -1 -> {
+                    pending.remove(entry); changed = true
+                    temp.delete()
+                    if (status != -1) {
+                        Toast.makeText(this, "Download mappa non riuscito", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        }
+        if (changed) savePendingMapDownloads(pending)
     }
 
     private fun saveMapMode(mode: String) {
@@ -4743,6 +4959,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
             }
             ImportServiceResult.MapImported -> {
                 showTransientStatus("Mappa importata correttamente")
+                saveActiveMap("friuli.pmtiles")
                 saveMapMode(MAP_MODE_OFFLINE)
                 loadInstalledMap()
             }
@@ -4771,10 +4988,33 @@ class MainActivity : AppCompatActivity(), LocationListener {
         }
     }
 
-    private fun installedMapFile(): File {
+    private fun mapsDirectory(): File {
         val baseDirectory = getExternalFilesDir(null) ?: filesDir
-        return File(baseDirectory, "maps/friuli.pmtiles")
+        return File(baseDirectory, "maps").also { it.mkdirs() }
     }
+
+    private fun activeMapName(): String =
+        getSharedPreferences(PREFS_MAP, Context.MODE_PRIVATE)
+            .getString(PREF_ACTIVE_MAP, "friuli.pmtiles") ?: "friuli.pmtiles"
+
+    private fun saveActiveMap(name: String) {
+        getSharedPreferences(PREFS_MAP, Context.MODE_PRIVATE)
+            .edit().putString(PREF_ACTIVE_MAP, name).apply()
+    }
+
+    private fun installedMapFile(): File = File(mapsDirectory(), activeMapName())
+
+    private fun installedMaps(): List<File> =
+        mapsDirectory().listFiles { file ->
+            file.isFile && file.extension.equals("pmtiles", true) && file.length() > 0L
+        }?.sortedBy { it.name.lowercase() } ?: emptyList()
+
+    private fun prettyMapName(fileName: String): String =
+        fileName.removeSuffix(".pmtiles").replace('_', ' ').replace('-', ' ').trim()
+            .replaceFirstChar { it.uppercase() }
+
+    private fun mapSizeText(bytes: Long): String =
+        String.format(java.util.Locale.ITALY, "%.0f MB", bytes / (1024.0 * 1024.0))
 
     // =========================================================
     // STILE VETTORIALE OFFLINE
@@ -5517,6 +5757,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
     override fun onResume() {
         super.onResume()
         binding.mapView.onResume()
+        finalizeCompletedMapDownloads()
     }
 
     override fun onPause() {
@@ -5544,6 +5785,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
     }
 
     override fun onDestroy() {
+        runCatching { unregisterReceiver(mapDownloadReceiver) }
         buddyHandler.removeCallbacks(buddyTick)
         buddyTracker?.stop(removeOwn = false)
         if (::locationManager.isInitialized) {
@@ -5571,6 +5813,10 @@ class MainActivity : AppCompatActivity(), LocationListener {
         private const val PREF_MANUAL_START_KM = "manual_start_km"
         private const val PREFS_MAP = "map_settings"
         private const val PREF_MAP_MODE = "map_mode"
+        private const val PREF_ACTIVE_MAP = "active_map"
+        private const val PREF_PENDING_DOWNLOADS = "pending_downloads"
+        private const val MAPS_RELEASES_API =
+            "https://api.github.com/repos/p67906265-spec/GpxNav-Maps/releases"
         private const val MAP_MODE_ONLINE = "online"
         private const val MAP_MODE_OFFLINE = "offline"
         private const val GPS_SOURCE_ID = "gps-position-source"
