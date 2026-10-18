@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.26.2
+- Creazione traccia: compaiono solo i punti inseriti con +, non più i cerchi su ogni vertice della linea calcolata.
+
 ## 1.26.1
 - Partenza a metà traccia: se avvii la navigazione già sulla traccia (es. gara iniziata), l'app parte da quel punto senza tornare all'inizio e senza calcolare il percorso con BRouter.
 - I km FINE si scalano dal punto di aggancio; INIZIO mostra i km dall'inizio della traccia.

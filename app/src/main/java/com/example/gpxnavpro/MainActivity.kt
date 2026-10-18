@@ -1550,7 +1550,16 @@ class MainActivity : AppCompatActivity(), LocationListener {
                 circleColor("#FFFFFF"),
                 circleStrokeColor("#1261A0"),
                 circleStrokeWidth(4f)
-            )
+            ).apply {
+                // Senza filtro il cerchio viene disegnato anche su ogni vertice della
+                // linea calcolata: solo i punti inseriti con + devono comparire.
+                setFilter(
+                    org.maplibre.android.style.expressions.Expression.eq(
+                        org.maplibre.android.style.expressions.Expression.geometryType(),
+                        org.maplibre.android.style.expressions.Expression.literal("Point")
+                    )
+                )
+            }
         )
     }
 
