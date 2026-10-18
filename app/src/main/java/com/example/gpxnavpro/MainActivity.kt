@@ -863,6 +863,22 @@ class MainActivity : AppCompatActivity(), LocationListener {
             return
         }
 
+        // Partenza a metà traccia (es. gara già iniziata): se sono lontano dall'inizio
+        // ma già sulla traccia, la navigazione parte da questo punto, senza tornare
+        // indietro e senza calcolare il percorso verso la partenza.
+        val startPoint = route.points.first()
+        val distanceToStart = distanceMeters(
+            location.latitude,
+            location.longitude,
+            startPoint.latitude,
+            startPoint.longitude
+        )
+        val joinFix = if (distanceToStart > START_REACHED_DISTANCE_METERS) {
+            findMidRouteJoin(route, location)
+        } else {
+            null
+        }
+
         navigationEngine.resetProgress()
         approachNavigationEngine.resetProgress()
         isNavigationActive = true
@@ -871,8 +887,8 @@ class MainActivity : AppCompatActivity(), LocationListener {
             .edit()
             .putBoolean(PREF_NAVIGATION_ACTIVE, true)
             .putString(PREF_NAVIGATION_ROUTE_PATH, activeRouteFile?.absolutePath)
-            .putBoolean(PREF_NAVIGATION_MAIN_ROUTE_ACTIVE, false)
-            .putFloat(PREF_NAVIGATION_PROGRESS_METERS, 0f)
+            .putBoolean(PREF_NAVIGATION_MAIN_ROUTE_ACTIVE, joinFix != null)
+            .putFloat(PREF_NAVIGATION_PROGRESS_METERS, (joinFix?.progressMeters ?: 0.0).toFloat())
             .apply()
         NavigationLocationService.start(this)
         runCatching { locationManager.removeUpdates(this) }
@@ -885,13 +901,22 @@ class MainActivity : AppCompatActivity(), LocationListener {
             scaleDistanceMeters = INITIAL_NAVIGATION_SCALE_METERS
         )
 
-        val start = route.points.first()
-        val distanceToStart = distanceMeters(
-            location.latitude,
-            location.longitude,
-            start.latitude,
-            start.longitude
-        )
+        if (joinFix != null) {
+            navigationEngine.restoreProgress(joinFix.progressMeters)
+            currentRouteProgressMeters = joinFix.progressMeters
+            tripResetOffsetMeters = 0.0
+            binding.turnPanel.visibility = View.GONE
+            binding.startNavigationButton.text = "STOP"
+            updateDistancePanels()
+            Toast.makeText(
+                this,
+                "Navigazione dal km ${String.format(java.util.Locale.ITALY, "%.1f", joinFix.progressMeters / 1000.0)}",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+
+        val start = startPoint
         if (distanceToStart <= START_REACHED_DISTANCE_METERS) {
             beginMainRouteNavigation()
             return
@@ -938,6 +963,19 @@ class MainActivity : AppCompatActivity(), LocationListener {
                     )
                 }
             }
+        }
+    }
+
+    /**
+     * Se la posizione è sulla traccia (entro la soglia di fuori percorso) e oltre
+     * l'inizio, restituisce il punto di aggancio; altrimenti null.
+     */
+    private fun findMidRouteJoin(route: GpxRoute, location: Location): NavigationFix? {
+        val engine = NavigationEngine()
+        engine.setRoute(route)
+        val fix = engine.match(location) ?: return null
+        return fix.takeIf {
+            !it.isOffRoute && it.progressMeters > START_REACHED_DISTANCE_METERS
         }
     }
 

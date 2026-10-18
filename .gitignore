@@ -46,3 +46,6 @@ key.properties
 keystore.properties
 .env
 .env.*
+
+*.pmtiles
+*.pmtiles.download

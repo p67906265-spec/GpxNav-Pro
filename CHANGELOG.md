@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.26.1
+- Partenza a metà traccia: se avvii la navigazione già sulla traccia (es. gara iniziata), l'app parte da quel punto senza tornare all'inizio e senza calcolare il percorso con BRouter.
+- I km FINE si scalano dal punto di aggancio; INIZIO mostra i km dall'inizio della traccia.
+
 ## 1.24.1
 - Corretto l'azzeramento del campo INIZIO.
 - Toccando INIZIO vengono azzerati sia il progresso parziale sia gli eventuali km manuali impostati da FINE.
