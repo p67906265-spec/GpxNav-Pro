@@ -224,6 +224,49 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
 
+    <LinearLayout
+        android:id="@+id/recordingButtons"
+        android:layout_width="188dp"
+        android:layout_height="46dp"
+        android:layout_marginStart="82dp"
+        android:layout_marginBottom="56dp"
+        android:orientation="horizontal"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/recordingPauseButton"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginEnd="4dp"
+            android:layout_weight="1"
+            android:maxLines="1"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            android:text="PAUSA"
+            android:textColor="#17202A"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            app:backgroundTint="#FFD21F"
+            app:cornerRadius="27dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/recordingStopButton"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:maxLines="1"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            android:text="TERMINA"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            app:backgroundTint="#D93025"
+            app:cornerRadius="27dp" />
+    </LinearLayout>
+
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/eventAlertPanel"
         android:layout_width="0dp"
@@ -825,7 +868,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     android:gravity="center"
-                    android:text="PAOLO FREE 1.0  ·  V1.27.0"
+                    android:text="PAOLO FREE 1.0  ·  V1.27.1"
                     android:letterSpacing="0.2"
                     android:textColor="#5B6472"
                     android:textSize="10.5sp" />

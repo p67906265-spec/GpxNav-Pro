@@ -393,6 +393,12 @@ class MainActivity : AppCompatActivity(), LocationListener {
             closeDrawer()
             onRecordTrackClicked()
         }
+        binding.recordingPauseButton.setOnClickListener {
+            TrackRecorderService.togglePause(this)
+        }
+        binding.recordingStopButton.setOnClickListener {
+            confirmStopRecording()
+        }
         binding.confirmEditPointButton.setOnClickListener {
             val target = mapLibreMap?.cameraPosition?.target ?: return@setOnClickListener
             when (pendingGpxEditAction) {
@@ -1459,6 +1465,10 @@ class MainActivity : AppCompatActivity(), LocationListener {
             showRecordingDialog()
             return
         }
+        if (isNavigationActive) {
+            Toast.makeText(this, "Ferma la navigazione prima di registrare", Toast.LENGTH_LONG).show()
+            return
+        }
         val fineGranted = ContextCompat.checkSelfPermission(
             this, Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
@@ -1495,7 +1505,24 @@ class MainActivity : AppCompatActivity(), LocationListener {
         dialog.show()
     }
 
+    private fun confirmStopRecording() {
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Terminare la registrazione?")
+            .setMessage("La traccia verrà salvata.")
+            .setPositiveButton("Termina e salva") { _, _ -> TrackRecorderService.stop(this) }
+            .setNegativeButton("Continua", null)
+            .create()
+        dialog.setOnShowListener { styleBlueDialog(dialog) }
+        dialog.show()
+    }
+
     private fun updateRecordTrackButton() {
+        // Durante la registrazione i tasti Pausa / Termina prendono il posto di AVVIA.
+        val recording = TrackRecorderService.isRunning
+        binding.recordingButtons.visibility = if (recording) View.VISIBLE else View.GONE
+        binding.startNavigationButton.visibility = if (recording) View.INVISIBLE else View.VISIBLE
+        binding.recordingPauseButton.text = if (TrackRecorderService.isPaused) "RIPRENDI" else "PAUSA"
+
         binding.recordTrackDrawerButton.text = if (TrackRecorderService.isRunning) {
             val km = String.format(java.util.Locale.ITALY, "%.1f", TrackRecorderService.distanceMeters / 1000.0)
             (if (TrackRecorderService.isPaused) "⏸ In pausa · " else "● Registrazione · ") + "$km km"

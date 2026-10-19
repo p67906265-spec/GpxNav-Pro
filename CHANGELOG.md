@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.27.1
+- Registra traccia: durante la registrazione, nella schermata principale i tasti PAUSA/RIPRENDI e TERMINA prendono il posto di AVVIA. TERMINA chiede conferma e salva.
+- Non si può registrare mentre è attiva la navigazione.
+
 ## 1.27.0
 - Nuova funzione "Registra traccia" (menu, sezione dei GPX): registra il giro in moto e lo salva come GPX.
 - Servizio in primo piano con notifica (Pausa / Stop e salva), il file viene scritto mentre registri e resta valido anche se il telefono si spegne.
