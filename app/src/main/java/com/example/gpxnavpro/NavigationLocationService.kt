@@ -81,6 +81,7 @@ class NavigationLocationService : Service(), LocationListener {
         isRunning = false
         lastLocation = null
         lastNavigationFix = null
+        lastActiveAlert = null
         super.onDestroy()
     }
 
@@ -168,6 +169,7 @@ class NavigationLocationService : Service(), LocationListener {
         val activeAlert = routeAlertEngine.activeAlert(fix.progressMeters) { type ->
             preferences.getInt(type.preferenceKey, DEFAULT_ALERT_DISTANCE)
         }
+        lastActiveAlert = activeAlert
         if (activeAlert != null) {
             alertFeedback.routeAlert(activeAlert)
         }
@@ -303,6 +305,8 @@ class NavigationLocationService : Service(), LocationListener {
             private set
         @Volatile var lastNavigationFix: NavigationFix? = null
             private set
+        @Volatile var lastActiveAlert: ActiveRouteAlert? = null
+            private set
         @Volatile var listener: ((Location) -> Unit)? = null
         @Volatile var navigationStoppedListener: (() -> Unit)? = null
 
@@ -318,10 +322,19 @@ class NavigationLocationService : Service(), LocationListener {
             ContextCompat.startForegroundService(context, intent)
         }
 
+        /** Ferma la navigazione dall'esterno (es. Android Auto) come il tasto Stop della notifica. */
+        fun requestStop(context: Context) {
+            if (!isRunning) return
+            context.startService(
+                Intent(context, NavigationLocationService::class.java).apply { action = ACTION_STOP }
+            )
+        }
+
         fun stop(context: Context) {
             isRunning = false
             lastLocation = null
             lastNavigationFix = null
+            lastActiveAlert = null
             context.stopService(Intent(context, NavigationLocationService::class.java))
         }
     }

@@ -17,8 +17,8 @@ android {
         minSdk = 24
         targetSdk = 36
 
-        versionCode = 51
-        versionName = "1.27.2"
+        versionCode = 52
+        versionName = "1.28.0"
 
         ndk {
             abiFilters += listOf("arm64-v8a")
@@ -93,6 +93,9 @@ dependencies {
     implementation(libs.material)
 
     implementation(libs.maplibre)
+
+    // Android Auto (app di navigazione)
+    implementation("androidx.car.app:app:1.4.0")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.espresso.core)

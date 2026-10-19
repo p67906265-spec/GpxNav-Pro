@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.28.0
+- Android Auto, fase 1: GPX NAV compare come app di navigazione su Android Auto con un pannello informativo (FINE km, INIZIO km, velocità, prossimo avviso, fuori traccia) e il tasto STOP. La navigazione si avvia ancora dal telefono.
+- La mappa sullo schermo dell'auto arriva nella fase 2.
+
 ## 1.27.2
 - Registra traccia: TERMINA ora offre "Termina e salva", "Elimina" e "Continua".
 - La registrazione parte solo con una posizione GPS: la mappa si centra sulla moto e la segue per tutto il giro.
