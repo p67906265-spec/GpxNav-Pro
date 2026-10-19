@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.29.0
+- Android Auto, fase 2: sullo schermo dell'auto compare la mappa (online o offline, come sul telefono) con la traccia attiva, i colori delle pendenze, partenza/arrivo e la freccia della moto, che la mappa segue girando nel senso di marcia.
+- La mappa usa un GPS proprio: funziona anche a telefono bloccato. Il pannello con km, velocità e avvisi resta sopra la mappa.
+- Lo stile della mappa offline è ora in un file condiviso (OfflineMapStyle) tra telefono e auto.
+
 ## 1.28.0
 - Android Auto, fase 1: GPX NAV compare come app di navigazione su Android Auto con un pannello informativo (FINE km, INIZIO km, velocità, prossimo avviso, fuori traccia) e il tasto STOP. La navigazione si avvia ancora dal telefono.
 - La mappa sullo schermo dell'auto arriva nella fase 2.

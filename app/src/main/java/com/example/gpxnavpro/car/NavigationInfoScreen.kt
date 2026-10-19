@@ -3,6 +3,7 @@ package com.example.gpxnavpro.car
 import android.graphics.Color
 import android.os.Handler
 import android.os.Looper
+import androidx.car.app.AppManager
 import androidx.car.app.CarContext
 import androidx.car.app.Screen
 import androidx.car.app.model.Action
@@ -24,6 +25,7 @@ class NavigationInfoScreen(carContext: CarContext) : Screen(carContext) {
 
     private val handler = Handler(Looper.getMainLooper())
     private var lastShown: String? = null
+    private val mapRenderer = CarMapRenderer(carContext)
 
     private val ticker = object : Runnable {
         override fun run() {
@@ -34,6 +36,9 @@ class NavigationInfoScreen(carContext: CarContext) : Screen(carContext) {
     }
 
     init {
+        // La mappa con la traccia viene disegnata sulla superficie dell'auto.
+        carContext.getCarService(AppManager::class.java).setSurfaceCallback(mapRenderer)
+
         lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
                 handler.post(ticker)
@@ -41,6 +46,12 @@ class NavigationInfoScreen(carContext: CarContext) : Screen(carContext) {
 
             override fun onStop(owner: LifecycleOwner) {
                 handler.removeCallbacks(ticker)
+            }
+
+            override fun onDestroy(owner: LifecycleOwner) {
+                handler.removeCallbacks(ticker)
+                runCatching { carContext.getCarService(AppManager::class.java).setSurfaceCallback(null) }
+                mapRenderer.destroy()
             }
         })
     }
