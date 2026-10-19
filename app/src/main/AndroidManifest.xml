@@ -89,6 +89,11 @@
             android:foregroundServiceType="location" />
 
         <service
+            android:name=".TrackRecorderService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+
+        <service
             android:name=".ImportService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />

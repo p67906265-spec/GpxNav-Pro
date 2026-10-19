@@ -578,6 +578,22 @@
                         android:text="Crea GPX"
                         android:textColor="#D7DCE6"
                         android:textSize="15sp" />
+
+                    <TextView
+                        android:id="@+id/recordTrackDrawerButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="46dp"
+                        android:layout_marginBottom="8dp"
+                        android:background="@drawable/bg_drawer_action"
+                        android:drawableStart="@drawable/ic_add"
+                        android:drawableEnd="@drawable/ic_chevron_right"
+                        android:drawablePadding="12dp"
+                        android:gravity="center_vertical"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:text="Registra traccia"
+                        android:textColor="#D7DCE6"
+                        android:textSize="15sp" />
                 </LinearLayout>
 
                 <TextView
@@ -809,7 +825,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     android:gravity="center"
-                    android:text="PAOLO FREE 1.0  ·  V1.26.2"
+                    android:text="PAOLO FREE 1.0  ·  V1.27.0"
                     android:letterSpacing="0.2"
                     android:textColor="#5B6472"
                     android:textSize="10.5sp" />

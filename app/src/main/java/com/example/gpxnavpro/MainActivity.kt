@@ -389,6 +389,10 @@ class MainActivity : AppCompatActivity(), LocationListener {
             closeDrawer()
             startCreateGpxMode()
         }
+        binding.recordTrackDrawerButton.setOnClickListener {
+            closeDrawer()
+            onRecordTrackClicked()
+        }
         binding.confirmEditPointButton.setOnClickListener {
             val target = mapLibreMap?.cameraPosition?.target ?: return@setOnClickListener
             when (pendingGpxEditAction) {
@@ -1444,6 +1448,106 @@ class MainActivity : AppCompatActivity(), LocationListener {
             .setDuration(200L)
             .withEndAction { binding.drawerScrim.visibility = View.GONE }
             .start()
+    }
+
+    // =========================================================
+    // REGISTRA TRACCIA (giro in moto -> file GPX)
+    // =========================================================
+
+    private fun onRecordTrackClicked() {
+        if (TrackRecorderService.isRunning) {
+            showRecordingDialog()
+            return
+        }
+        val fineGranted = ContextCompat.checkSelfPermission(
+            this, Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!fineGranted) {
+            requestLocationPermissionIfNeeded()
+            Toast.makeText(
+                this,
+                "Consenti la posizione precisa, poi premi di nuovo Registra traccia",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+        TrackRecorderService.start(this)
+        Toast.makeText(
+            this,
+            "Registrazione avviata: ferma e salva dalla notifica o da questo menu",
+            Toast.LENGTH_LONG
+        ).show()
+    }
+
+    private fun showRecordingDialog() {
+        val km = String.format(java.util.Locale.ITALY, "%.1f", TrackRecorderService.distanceMeters / 1000.0)
+        val paused = TrackRecorderService.isPaused
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Registrazione in corso")
+            .setMessage("$km km · ${TrackRecorderService.pointCount} punti" + if (paused) "\nIn pausa" else "")
+            .setPositiveButton("Stop e salva") { _, _ -> TrackRecorderService.stop(this) }
+            .setNeutralButton(if (paused) "Riprendi" else "Pausa") { _, _ ->
+                TrackRecorderService.togglePause(this)
+            }
+            .setNegativeButton("Chiudi", null)
+            .create()
+        dialog.setOnShowListener { styleBlueDialog(dialog) }
+        dialog.show()
+    }
+
+    private fun updateRecordTrackButton() {
+        binding.recordTrackDrawerButton.text = if (TrackRecorderService.isRunning) {
+            val km = String.format(java.util.Locale.ITALY, "%.1f", TrackRecorderService.distanceMeters / 1000.0)
+            (if (TrackRecorderService.isPaused) "⏸ In pausa · " else "● Registrazione · ") + "$km km"
+        } else {
+            "Registra traccia"
+        }
+    }
+
+    private fun onRecordingStopped(file: File?, points: Int) {
+        updateRecordTrackButton()
+        if (file == null) {
+            Toast.makeText(
+                this,
+                "Registrazione troppo corta ($points punti): non salvata",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+        val km = String.format(java.util.Locale.ITALY, "%.1f", TrackRecorderService.distanceMeters / 1000.0)
+        val input = android.widget.EditText(this).apply {
+            hint = "Nome della traccia"
+            setText(file.nameWithoutExtension)
+            selectAll()
+        }
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Traccia registrata: $km km")
+            .setView(input)
+            .setPositiveButton("Salva e apri") { _, _ ->
+                val renamed = renameRecordedGpx(file, input.text.toString())
+                openGpxFile(renamed, zoomToRoute = true)
+            }
+            .setNegativeButton("Tieni il nome") { _, _ ->
+                openGpxFile(file, zoomToRoute = true)
+            }
+            .setCancelable(false)
+            .create()
+        dialog.setOnShowListener { styleBlueDialog(dialog) }
+        dialog.show()
+    }
+
+    private fun renameRecordedGpx(file: File, requestedName: String): File {
+        val safeName = requestedName.trim()
+            .replace(Regex("[^A-Za-z0-9._-]+"), "_")
+            .trim('_')
+        if (safeName.isBlank() || safeName == file.nameWithoutExtension) return file
+        var target = File(gpxDirectory(), "$safeName.gpx")
+        var counter = 2
+        while (target.exists()) {
+            target = File(gpxDirectory(), "${safeName}_$counter.gpx")
+            counter++
+        }
+        return if (file.renameTo(target)) target else file
     }
 
     private fun startCreateGpxMode() {
@@ -5726,6 +5830,14 @@ class MainActivity : AppCompatActivity(), LocationListener {
             }
         }
 
+        TrackRecorderService.stateListener = {
+            if (!isFinishing && !isDestroyed) updateRecordTrackButton()
+        }
+        TrackRecorderService.stoppedListener = { recorded, points ->
+            if (!isFinishing && !isDestroyed) onRecordingStopped(recorded, points)
+        }
+        updateRecordTrackButton()
+
         val navigationPreferences = getSharedPreferences(PREFS_NAVIGATION, Context.MODE_PRIVATE)
         val navigationPrefActive = navigationPreferences.getBoolean(PREF_NAVIGATION_ACTIVE, false)
         if (isNavigationActive && !NavigationLocationService.isRunning && !navigationPrefActive) {
@@ -5815,6 +5927,8 @@ class MainActivity : AppCompatActivity(), LocationListener {
     override fun onStop() {
         NavigationLocationService.listener = null
         NavigationLocationService.navigationStoppedListener = null
+        TrackRecorderService.stateListener = null
+        TrackRecorderService.stoppedListener = null
         ImportService.setListener(null)
         binding.mapView.onStop()
         super.onStop()

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.27.0
+- Nuova funzione "Registra traccia" (menu, sezione dei GPX): registra il giro in moto e lo salva come GPX.
+- Servizio in primo piano con notifica (Pausa / Stop e salva), il file viene scritto mentre registri e resta valido anche se il telefono si spegne.
+- Filtro punti: scarta il GPS impreciso e le soste, un punto ogni ~12 m in rettilineo e ~5 m in curva; salva anche quota e orario.
+- A fine registrazione si può rinominare la traccia e aprirla subito.
+
 ## 1.26.2
 - Creazione traccia: compaiono solo i punti inseriti con +, non più i cerchi su ogni vertice della linea calcolata.
 
