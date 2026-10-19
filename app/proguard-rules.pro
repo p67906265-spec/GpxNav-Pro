@@ -10,3 +10,9 @@
 -keep class com.example.gpxnavpro.GpxPoint { *; }
 -keep class com.example.gpxnavpro.GpxWaypoint { *; }
 -keep class com.example.gpxnavpro.GpxRoute { *; }
+
+# Android Auto (Car App Library): classi create dal sistema via manifest/riflessione.
+-keep class androidx.car.app.** { *; }
+-dontwarn androidx.car.app.**
+-keep class com.example.gpxnavpro.car.** { *; }
+-keep class com.example.gpxnavpro.TrackRecorderService { *; }

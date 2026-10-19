@@ -100,7 +100,10 @@
 
         <service
             android:name=".car.GpxNavCarAppService"
-            android:exported="true">
+            android:enabled="true"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="@string/app_name">
             <intent-filter>
                 <action android:name="androidx.car.app.CarAppService" />
                 <category android:name="androidx.car.app.category.NAVIGATION" />

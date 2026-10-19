@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.29.1
+- Android Auto: il servizio ha ora nome e icona propri e le classi dell'auto sono protette dall'ottimizzazione della release, per far comparire l'app nel menu dell'auto.
+
 ## 1.29.0
 - Android Auto, fase 2: sullo schermo dell'auto compare la mappa (online o offline, come sul telefono) con la traccia attiva, i colori delle pendenze, partenza/arrivo e la freccia della moto, che la mappa segue girando nel senso di marcia.
 - La mappa usa un GPS proprio: funziona anche a telefono bloccato. Il pannello con km, velocità e avvisi resta sopra la mappa.
