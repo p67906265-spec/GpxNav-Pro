@@ -552,7 +552,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
             })
             map.addOnMoveListener(object : MapLibreMap.OnMoveListener {
                 override fun onMoveBegin(detector: MoveGestureDetector) {
-                    if (!isScalingMap) {
+                    if (!isScalingMap && !TrackRecorderService.isRunning) {
                         setFollowGps(false)
                     }
                 }
@@ -1481,6 +1481,18 @@ class MainActivity : AppCompatActivity(), LocationListener {
             ).show()
             return
         }
+        // Prima di partire la mappa va centrata sulla moto: serve una posizione GPS.
+        val here = lastLocation
+        if (here == null) {
+            Toast.makeText(
+                this,
+                "Posizione GPS non ancora disponibile: attendi il segnale e riprova",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+        setFollowGps(true)
+        centerOnLocation(here, animated = true)
         TrackRecorderService.start(this)
         Toast.makeText(
             this,
@@ -1508,9 +1520,10 @@ class MainActivity : AppCompatActivity(), LocationListener {
     private fun confirmStopRecording() {
         val dialog = AlertDialog.Builder(this)
             .setTitle("Terminare la registrazione?")
-            .setMessage("La traccia verrà salvata.")
+            .setMessage("Puoi salvare la traccia oppure eliminarla.")
             .setPositiveButton("Termina e salva") { _, _ -> TrackRecorderService.stop(this) }
-            .setNegativeButton("Continua", null)
+            .setNegativeButton("Elimina") { _, _ -> TrackRecorderService.discard(this) }
+            .setNeutralButton("Continua", null)
             .create()
         dialog.setOnShowListener { styleBlueDialog(dialog) }
         dialog.show()
@@ -1522,6 +1535,12 @@ class MainActivity : AppCompatActivity(), LocationListener {
         binding.recordingButtons.visibility = if (recording) View.VISIBLE else View.GONE
         binding.startNavigationButton.visibility = if (recording) View.INVISIBLE else View.VISIBLE
         binding.recordingPauseButton.text = if (TrackRecorderService.isPaused) "RIPRENDI" else "PAUSA"
+        // In registrazione la mappa segue sempre la moto: il tasto per centrare non serve.
+        binding.recenterButton.visibility = if (recording) View.INVISIBLE else View.VISIBLE
+        if (recording && !followGps) {
+            setFollowGps(true)
+            lastLocation?.let { centerOnLocation(it, animated = true) }
+        }
 
         binding.recordTrackDrawerButton.text = if (TrackRecorderService.isRunning) {
             val km = String.format(java.util.Locale.ITALY, "%.1f", TrackRecorderService.distanceMeters / 1000.0)
@@ -1533,6 +1552,10 @@ class MainActivity : AppCompatActivity(), LocationListener {
 
     private fun onRecordingStopped(file: File?, points: Int) {
         updateRecordTrackButton()
+        if (points < 0) {
+            Toast.makeText(this, "Registrazione eliminata", Toast.LENGTH_LONG).show()
+            return
+        }
         if (file == null) {
             Toast.makeText(
                 this,

@@ -50,8 +50,8 @@ class TrackRecorderService : Service(), LocationListener {
         startForeground(NOTIFICATION_ID, buildNotification())
 
         when (intent?.action) {
-            ACTION_STOP -> {
-                if (isRunning) finishRecording()
+            ACTION_STOP, ACTION_DISCARD -> {
+                if (isRunning) finishRecording(discard = intent?.action == ACTION_DISCARD)
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf(startId)
                 return START_NOT_STICKY
@@ -142,7 +142,7 @@ class TrackRecorderService : Service(), LocationListener {
         return true
     }
 
-    private fun finishRecording() {
+    private fun finishRecording(discard: Boolean = false) {
         runCatching { locationManager.removeUpdates(this) }
         runCatching { raf?.close() }
         raf = null
@@ -150,7 +150,12 @@ class TrackRecorderService : Service(), LocationListener {
         val saved = pointCount
         isRunning = false
         isPaused = false
-        if (file != null && saved < 2) {
+        if (discard) {
+            file?.delete()
+            currentFile = null
+            // -1 = registrazione eliminata dall'utente
+            stoppedListener?.invoke(null, -1)
+        } else if (file != null && saved < 2) {
             file.delete()
             currentFile = null
             stoppedListener?.invoke(null, saved)
@@ -286,6 +291,7 @@ class TrackRecorderService : Service(), LocationListener {
         private const val CHANNEL_ID = "gpx_recording"
         private const val NOTIFICATION_ID = 2201
         private const val ACTION_STOP = "com.example.gpxnavpro.action.STOP_RECORDING"
+        private const val ACTION_DISCARD = "com.example.gpxnavpro.action.DISCARD_RECORDING"
         private const val ACTION_TOGGLE_PAUSE = "com.example.gpxnavpro.action.TOGGLE_PAUSE_RECORDING"
         private const val FOOTER = "    </trkseg>\n  </trk>\n</gpx>\n"
 
@@ -324,6 +330,12 @@ class TrackRecorderService : Service(), LocationListener {
         fun stop(context: Context) {
             context.startService(
                 Intent(context, TrackRecorderService::class.java).apply { action = ACTION_STOP }
+            )
+        }
+
+        fun discard(context: Context) {
+            context.startService(
+                Intent(context, TrackRecorderService::class.java).apply { action = ACTION_DISCARD }
             )
         }
 

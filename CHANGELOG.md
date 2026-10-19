@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.27.2
+- Registra traccia: TERMINA ora offre "Termina e salva", "Elimina" e "Continua".
+- La registrazione parte solo con una posizione GPS: la mappa si centra sulla moto e la segue per tutto il giro.
+- Durante la registrazione il tasto per centrare la mappa è nascosto.
+
 ## 1.27.1
 - Registra traccia: durante la registrazione, nella schermata principale i tasti PAUSA/RIPRENDI e TERMINA prendono il posto di AVVIA. TERMINA chiede conferma e salva.
 - Non si può registrare mentre è attiva la navigazione.
